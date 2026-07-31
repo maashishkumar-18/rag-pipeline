@@ -47,7 +47,14 @@ jobs:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      PINECONE_INDEX_NAME: ${{ vars.PINECONE_INDEX_NAME }}
+      # `|| 'rag-pipeline-index'` matters: an unset repo variable still
+      # defines this env var as an empty string (not absent), which
+      # defeats VectorStore's own os.getenv(..., "rag-pipeline-index")
+      # fallback — os.getenv only falls back when the key is missing
+      # entirely, not when it's present-but-empty. Learned this the hard
+      # way: an early run crashed in pinecone-client with "Invalid value
+      # for `name`, length must be >= 1" because of exactly this.
+      PINECONE_INDEX_NAME: ${{ vars.PINECONE_INDEX_NAME || 'rag-pipeline-index' }}
       PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
