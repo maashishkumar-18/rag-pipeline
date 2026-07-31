@@ -67,8 +67,13 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      # punkt (not just punkt_tab) is required: src/ingestion/chunker.py
+      # checks specifically for the old resource name at import time. Also
+      # fixed chunker.py itself to fall back gracefully instead of crashing
+      # if this is ever missing again — this download is belt-and-suspenders
+      # so CI gets real NLTK sentence splitting, not the regex fallback.
       - name: Download NLTK data
-        run: python -m nltk.downloader punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng
+        run: python -m nltk.downloader punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng
 
       - name: Run RAGAS eval (pull request — sampled)
         if: github.event_name == 'pull_request'

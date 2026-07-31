@@ -16,16 +16,19 @@ import tiktoken
 
 from src.common.llm_client import simple_generate
 
-# Try to import NLTK, fallback to regex if not available
+# Try to import NLTK, fallback to regex if not available. Catches
+# LookupError as well as ImportError — nltk being installed doesn't mean
+# its data (punkt/punkt_tab, renamed between nltk versions) is actually
+# present, and that failure mode should degrade to the regex fallback
+# just like a missing package would, not crash the whole import chain.
 try:
     import nltk
     from nltk.tokenize import sent_tokenize
-    NLTK_AVAILABLE = True
-    # Ensure punkt tokenizer is downloaded
     nltk.data.find('tokenizers/punkt')
-except ImportError:
+    NLTK_AVAILABLE = True
+except (ImportError, LookupError):
     NLTK_AVAILABLE = False
-    print("⚠️  NLTK not available. Using fallback sentence splitting.")
+    print("WARNING: NLTK not available. Using fallback sentence splitting.")
 
 from src.ingestion.cleaner import CleanedDocument
 from src.ingestion.metadata_extractor import DocumentMetadata
@@ -180,7 +183,7 @@ class SemanticChunker:
             try:
                 return sent_tokenize(text)
             except Exception as e:
-                print(f"⚠️  NLTK sentence splitting failed: {e}. Using fallback.")
+                print(f"WARNING: NLTK sentence splitting failed: {e}. Using fallback.")
                 return self._fallback_sentence_split(text)
         else:
             return self._fallback_sentence_split(text)
