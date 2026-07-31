@@ -1,0 +1,109 @@
+name: RAGAS Eval
+
+# PRs get a small RAGAS-scored sample for fast, cheap feedback. Pushes to
+# main and the weekly schedule run the full 101-item golden set — that's
+# the authoritative gate. See eval/README.md "Baseline run and threshold
+# rationale" for why --threshold defaults to 0.75 against an observed 0.82
+# baseline, and "Known limitations" for what a failing run might mean.
+#
+# Required repository secrets:
+#   DEEPSEEK_API_KEY   - pipeline generation + RAGAS judge LLM
+#   GEMINI_API_KEY     - default embedding provider (both ingestion and
+#                        RAGAS answer_correctness's local embeddings model
+#                        download separately and need no key)
+#   PINECONE_API_KEY   - vector store (auto-creates its index if missing)
+# Optional repository variable:
+#   PINECONE_INDEX_NAME - defaults to "rag-pipeline-index" if unset
+#
+# Gemini's free tier is 1000 embedding requests/day, shared across every
+# workflow run *and* any local dev usage on the same key — a burst of PRs
+# can exhaust it (this happened once during manual testing; see
+# eval/README.md). Keep --sample-size modest on the pull_request trigger
+# for that reason, not just cost.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      sample-size:
+        description: "Sample size (blank = full 101-item run)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ragas-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      PINECONE_INDEX_NAME: ${{ vars.PINECONE_INDEX_NAME }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # unstructured's pptx parsing needs libmagic; ships as a Linux system
+      # package here (unlike Windows, which needs the separate
+      # python-magic-bin wheel — see eval/README.md "Known limitations" /
+      # requirements.txt comments for that story).
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libmagic1
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download NLTK data
+        run: python -m nltk.downloader punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng
+
+      - name: Run RAGAS eval (pull request — sampled)
+        if: github.event_name == 'pull_request'
+        run: python -m eval.run_ragas_eval --sample-size 15 --threshold 0.75
+
+      - name: Run RAGAS eval (push/schedule — full set)
+        if: github.event_name != 'pull_request' && github.event_name != 'workflow_dispatch'
+        run: python -m eval.run_ragas_eval --threshold 0.75
+
+      - name: Run RAGAS eval (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        # Bracket notation, not dot notation, for the hyphenated input name
+        # — `inputs.sample-size` risks being parsed as subtraction by the
+        # GitHub Actions expression evaluator.
+        env:
+          SAMPLE_SIZE_INPUT: ${{ github.event.inputs['sample-size'] }}
+        run: |
+          if [ -n "$SAMPLE_SIZE_INPUT" ]; then
+            python -m eval.run_ragas_eval --threshold 0.75 --sample-size "$SAMPLE_SIZE_INPUT"
+          else
+            python -m eval.run_ragas_eval --threshold 0.75
+          fi
+
+      - name: Add summary to job log
+        if: always()
+        run: |
+          latest_md=$(ls -t eval/results/*.md 2>/dev/null | head -n 1)
+          if [ -n "$latest_md" ]; then
+            cat "$latest_md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: eval/results/
+          retention-days: 90

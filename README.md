@@ -42,14 +42,15 @@ script.
 ## What's honestly not here yet
 
 There's a golden QA dataset (`eval/golden_qa_set.json` — 101 hand-built,
-programmatically-verified pairs against the sample corpus) and a RAGAS
-scoring harness that runs it (`eval/run_ragas_eval.py`) — see
-`eval/README.md` for how to run it and what the output means. What's
-still missing is CI actually calling it on every PR. Every
+programmatically-verified pairs against the sample corpus), a RAGAS
+scoring harness that runs it (`eval/run_ragas_eval.py`), and CI wired to
+run it (`.github/workflows/eval.yml` — sampled on every PR, full run on
+push to main and weekly) — see `eval/README.md` for how to run it, the
+observed baseline (0.82) and threshold rationale (0.75), and known
+limitations the harness surfaced along the way. Every
 `if __name__ == "__main__":` block at the bottom of each module remains a
 manual smoke test a human runs and eyeballs — useful for development, not
-a substitute for the eval harness. **Wiring the harness into CI is the
-next thing this project needs** — see "Roadmap" below.
+a substitute for the eval harness or CI.
 
 Grounding validation is keyword-overlap only (not an entailment/NLI model),
 so it catches unsupported answers but not fluent answers that lexically
@@ -177,10 +178,17 @@ project; evaluation and CI are the deliberately-unbuilt next layer:
    scores faithfulness, context precision/recall, and answer correctness
    for answerable items, and a structured refusal-signal check for
    deliberately-unanswerable ones. See `eval/README.md`.
-3. **CI** — run `eval/run_ragas_eval.py` on every PR (`--threshold` already
-   makes it exit non-zero on regression), fail the build accordingly.
+3. ~~**CI**~~ — done: `.github/workflows/eval.yml` runs
+   `eval/run_ragas_eval.py` (sampled on PRs, full run on push to main and
+   weekly on schedule) and fails the build on regression via the script's
+   own threshold-gated exit code.
 4. **Replace keyword-overlap grounding** with an actual entailment/NLI
    check in `src/generation/post_processor.py`'s `GroundingValidator`.
-5. **Cost/latency dashboard** — per-request token/cost tracking already
+5. **Fix the two known limitations documented in `eval/README.md`**:
+   reranker cold-start latency (warm it at service startup) and
+   multi-topic chunk dilution hurting single-term queries (finer-grained
+   chunking for multi-item topical spans) — both root-caused, neither
+   fixed yet, see that doc for why.
+6. **Cost/latency dashboard** — per-request token/cost tracking already
    exists in `UsageStats`/`EmbeddingGenerator.estimate_cost()`; nothing
    currently aggregates it.

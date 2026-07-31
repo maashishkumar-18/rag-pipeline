@@ -195,6 +195,31 @@ The process exit code is non-zero when the aggregate score is below
 `--threshold` — that's the hook for CI gating (see main README's
 "Roadmap" item 3).
 
+## CI
+
+`.github/workflows/eval.yml` runs this harness automatically:
+
+| Trigger | What runs |
+|---|---|
+| Pull request | `--sample-size 15 --threshold 0.75` — fast, cheap feedback |
+| Push to main | full 101-item run |
+| Weekly (Monday 06:00 UTC) | full 101-item run — catches drift between merges |
+| Manual (`workflow_dispatch`) | full run, or pass a sample size |
+
+Requires three repository secrets — `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
+`PINECONE_API_KEY` — and takes an optional `PINECONE_INDEX_NAME` repository
+variable (defaults to `rag-pipeline-index`; `VectorStore` auto-creates the
+index if it doesn't exist, so no manual Pinecone setup is needed beyond the
+key). Results are written to the job summary and uploaded as a workflow
+artifact (`eval-results-<run-id>`, 90-day retention) on every run,
+including failed ones.
+
+Gemini's free embedding tier is 1000 requests/day, shared across every CI
+run *and* any local dev usage on the same key — this was exhausted once
+during manual testing while building this harness (see "Known limitations"
+below). That's why the PR trigger uses a small sample rather than the full
+set: it's a cost/quota decision as much as a speed one.
+
 ## Baseline run and threshold rationale
 
 Full 101-item run, real RAGAS judge scoring (`eval/results/eval_20260731T210201Z.json`):
