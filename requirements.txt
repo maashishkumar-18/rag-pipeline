@@ -52,6 +52,12 @@ uvicorn[standard]==0.30.1
 
 # Utilities
 python-dotenv==1.0.1
-pydantic==2.7.4
+# pydantic==2.7.4 (originally pinned here) conflicts with google-genai==2.16.0
+# (above), which requires pydantic>=2.12.5,<3.0.0 — only surfaced in a clean
+# install (pip's resolver hits a hard ResolutionImpossible), because the dev
+# machine this was built on already had a newer pydantic installed from an
+# unrelated package before google-genai was ever added, silently masking the
+# conflict. fastapi==0.111.0 and openai==1.109.1 both accept this range too.
+pydantic==2.13.4
 pyyaml
 numpy
