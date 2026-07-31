@@ -1,0 +1,40 @@
+# Generation Pipeline Configuration
+# Loaded by GenerationConfig.from_yaml()
+
+config_version: "1.0.0"
+generation_version: "1.0.0"
+prompt_version: "1.0.0"
+
+default_mode: "context_aware"
+default_model_key: "deepseek_chat"
+
+# Generation modes
+modes:
+  context_aware:
+    mode: "context_aware"
+    prompt_id: "context_aware"
+    model_key: "deepseek_chat"
+    answer_format: "markdown"
+    citation_style: "inline"
+    include_context_header: true
+    include_source_prefix: true
+    max_context_tokens: 3000
+    system_instructions: >
+      Answer using ONLY the provided context. Cite sources precisely.
+      If the context doesn't contain the answer, state that clearly.
+    prompt_version_constraint: ">=1.0.0"
+
+  simple_explanation:
+    mode: "simple_explanation"
+    prompt_id: "simple_explanation"
+    model_key: "deepseek_chat"
+    answer_format: "markdown"
+    citation_style: "inline"
+    include_context_header: false
+    include_source_prefix: false
+    max_context_tokens: 2500
+    system_instructions: >
+      Explain using simple language, analogies, and real-world examples.
+      Include a key insight or "aha moment" for the reader.
+      Keep citations but make them less prominent.
+    prompt_version_constraint: ">=1.0.0"

@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+data/bm25_index/
+*.egg-info/
+.pytest_cache/
+
+# Eval run outputs — regenerated each run, uploaded as CI artifacts instead
+# of being committed (see .github/workflows/eval.yml)
+eval/results/
+
+# Local tooling state, not project source
+.claude/

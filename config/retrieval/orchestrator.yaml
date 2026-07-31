@@ -1,0 +1,14 @@
+# Retrieval Orchestrator Configuration
+# Loaded by OrchestratorConfig.from_yaml() — path resolves to
+# <repo root>/config/retrieval/orchestrator.yaml (three parents up from
+# src/retrieval/orchestrator.py), NOT src/config/retrieval/.
+
+# The in-code default (5000ms) was tuned before real embedding-API latency
+# was measured end-to-end: query rewriting, query expansion, hybrid search
+# (semantic + keyword-fallback + metadata), and reranking each involve at
+# least one network round trip to the embedding/LLM provider (observed
+# ~1-1.5s each), so a full LEARNING_PIPELINE attempt (rewriting + expansion
+# enabled) realistically takes 5-6s. At 5000ms, retrieval was timing out
+# and discarding results on every real (non-empty) namespace — see the
+# "Topic 1" / "couldn't find enough information" investigation.
+timeout_ms: 15000

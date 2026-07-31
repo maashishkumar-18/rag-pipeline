@@ -1,0 +1,1285 @@
+{
+  "_meta": {
+    "description": "Golden evaluation QA set for the bundled sample corpus (sample_data/sample_lecture.pptx).",
+    "source_document": "sample_data/sample_lecture.pptx",
+    "source_subject": "Supply Chain Management Strategy",
+    "source_chapter": "Chapter 09: Inventory Management",
+    "slide_range": "2-18",
+    "verification_method": "Every answerable item's source_quote is a verbatim substring extracted directly from the deck via DocumentParser + TextCleaner (see eval/README.md for the extraction command). No fact in any ground_truth was invented or pulled from general SCM knowledge -- if it isn't in source_quote, it isn't in the deck. Unanswerable items were checked against the full extracted text of every slide (2-18) to confirm the topic genuinely does not appear anywhere in the corpus.",
+    "total_items": 101,
+    "answerable_items": 84,
+    "unanswerable_items": 17,
+    "categories": [
+      "definition",
+      "explanation",
+      "calculation",
+      "comparison",
+      "multi_hop",
+      "reference",
+      "unanswerable"
+    ],
+    "schema": {
+      "id": "string, unique",
+      "question": "string",
+      "ground_truth": "string (verified answer) or null for unanswerable items",
+      "category": "one of the categories listed above",
+      "answerable": "bool -- whether the corpus actually contains the answer",
+      "expected_slides": "list[int] -- slide numbers (1-indexed as in the source PPTX) the answer is grounded in; empty for unanswerable items",
+      "source_quote": "verbatim substring (or list of verbatim substrings, when the answer draws on multiple spans) from the extracted slide text supporting ground_truth, or null for unanswerable items",
+      "notes": "string or null -- extra context, e.g. why an unanswerable item is a hard negative"
+    }
+  },
+  "items": [
+    {
+      "id": "q001",
+      "question": "What is inventory?",
+      "ground_truth": "Inventory is quantities of goods in stock, i.e., stock of raw materials and finished goods.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        3
+      ],
+      "source_quote": "Quantities of goods in stock, i.e, stock of raw materials and finished goods.",
+      "notes": null
+    },
+    {
+      "id": "q002",
+      "question": "What are the three categories of manufacturing inventory?",
+      "ground_truth": "Raw materials and component parts delivered from suppliers, work-in-process (WIP) inventory, and finished goods inventory.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": [
+        "Inventory of Raw materials and component parts that are delivered from suppliers.",
+        "Work-in-process (WIP) inventory: Raw materials and component parts enter the production process",
+        "Inventory of Finished Goods: Stock of finished goods after the completion of the production process."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q003",
+      "question": "What is work-in-process (WIP) inventory?",
+      "ground_truth": "Raw materials and component parts that have entered the production process.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": "Work-in-process (WIP) inventory: Raw materials and component parts enter the production process",
+      "notes": null
+    },
+    {
+      "id": "q004",
+      "question": "What is service inventory?",
+      "ground_truth": "Tangible goods that support delivery of a service, such as medical tools in an operating room or soaps in a hotel chain, plus items sold as part of the service, such as hair products at a beauty salon.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": "The tangible goods that support delivery of the service, such as medical tools in an operating room or soaps in a hotel chain. It also includes items sold as part of the service, such as hair products at a beauty salon.",
+      "notes": null
+    },
+    {
+      "id": "q005",
+      "question": "Give an example of service inventory in a hotel.",
+      "ground_truth": "Soaps in a hotel chain -- tangible goods that support delivery of the service.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": "soaps in a hotel chain",
+      "notes": null
+    },
+    {
+      "id": "q006",
+      "question": "Give an example of items sold as part of a service, per the deck.",
+      "ground_truth": "Hair products sold at a beauty salon.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": "items sold as part of the service, such as hair products at a beauty salon",
+      "notes": null
+    },
+    {
+      "id": "q007",
+      "question": "What are the two reasons given for carrying inventory?",
+      "ground_truth": "To protect against lead time demand (by holding safety stock), and to maintain independence of operations (by holding buffer stock).",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        5
+      ],
+      "source_quote": [
+        "Protect Against Lead Time Demand Holding extra inventory (safety stock) to ensure you have enough products to meet customer orders while waiting for new stock to arrive from suppliers.",
+        "Maintain Independence of Operations Holding enough buffer stock (raw materials, work-in-process, or finished goods) to ensure production and sales continue uninterrupted by supply chain disruptions, vendor delays, or demand fluctuations."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q008",
+      "question": "What is the purpose of holding safety stock, according to the deck's 'reasons for carrying inventory'?",
+      "ground_truth": "To ensure there is enough product to meet customer orders while waiting for new stock to arrive from suppliers -- protecting against lead time demand.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        5
+      ],
+      "source_quote": "Holding extra inventory (safety stock) to ensure you have enough products to meet customer orders while waiting for new stock to arrive from suppliers.",
+      "notes": null
+    },
+    {
+      "id": "q009",
+      "question": "What does 'maintain independence of operations' mean in the context of inventory?",
+      "ground_truth": "Holding enough buffer stock (raw materials, work-in-process, or finished goods) to ensure production and sales continue uninterrupted by supply chain disruptions, vendor delays, or demand fluctuations.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        5
+      ],
+      "source_quote": "Holding enough buffer stock (raw materials, work-in-process, or finished goods) to ensure production and sales continue uninterrupted by supply chain disruptions, vendor delays, or demand fluctuations.",
+      "notes": null
+    },
+    {
+      "id": "q010",
+      "question": "What is cycle stock?",
+      "ground_truth": "Inventory for immediate use, computed based on expected demand over a certain time period. Also called lot size inventory.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": "Cycle Stock (Lot Size Inventory) Inventory for immediate use and is computed based on expected demand over a certain time period.",
+      "notes": null
+    },
+    {
+      "id": "q011",
+      "question": "What is safety stock, as one of the types of inventory?",
+      "ground_truth": "The extra inventory a firm carries to serve as a cushion for uncertainties in supply and demand. Also called buffer stock.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": "Safety Stock (Buffer Stock) The extra inventory the firm carry to serve as a cushion for uncertainties in supply and demand.",
+      "notes": null
+    },
+    {
+      "id": "q012",
+      "question": "What is anticipation inventory?",
+      "ground_truth": "Extra stock acquired in advance of anticipated demand surges, seasonal spikes, or expected supply chain disruptions.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": "Anticipation inventory Extra stock acquired in advance of anticipated demand surges, seasonal spikes, or expected supply chain disruptions.",
+      "notes": null
+    },
+    {
+      "id": "q013",
+      "question": "What is pipeline inventory?",
+      "ground_truth": "Goods that have been ordered and paid for but are still in transit from a supplier to a warehouse or, finally, to the customer. Also called transportation inventory.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": "Pipeline inventory (Transportation Inventory) Goods that have been ordered and paid for but are still in transit from a supplier to a warehouse or, finally, to the customer.",
+      "notes": null
+    },
+    {
+      "id": "q014",
+      "question": "What does MRO stand for, and what does it include?",
+      "ground_truth": "Maintenance, Repair & Operating items -- supplies, consumables, and spare parts used to support daily production and facility upkeep without becoming part of the finished product.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": "Maintenance, Repair & Operating Items (MRO) Supplies, consumables, and spare parts used to support daily production and facility upkeep without becoming part of the finished product",
+      "notes": null
+    },
+    {
+      "id": "q015",
+      "question": "List the five types of inventory described in the deck.",
+      "ground_truth": "Cycle stock, safety stock, anticipation inventory, pipeline inventory, and MRO (maintenance, repair & operating items).",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": [
+        "Cycle Stock (Lot Size Inventory)",
+        "Safety Stock (Buffer Stock)",
+        "Anticipation inventory",
+        "Pipeline inventory (Transportation Inventory)",
+        "Maintenance, Repair & Operating Items (MRO)"
+      ],
+      "notes": null
+    },
+    {
+      "id": "q016",
+      "question": "What is holding cost (carrying cost)?",
+      "ground_truth": "Costs that vary with the amount of inventory held in stock, including storage facilities, handling, insurance, breakage, depreciation, taxes, and the opportunity cost of capital. It varies with the time period inventory is held.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        8
+      ],
+      "source_quote": "Costs that vary with the amount of inventory held in stock, including storage facilities, handling, insurance, breakage, depreciation, taxes, and the opportunity cost of capital.",
+      "notes": null
+    },
+    {
+      "id": "q017",
+      "question": "What is ordering cost (setup cost)?",
+      "ground_truth": "Costs involved in placing an order and procuring the item, including deciding order quantities and the clerical costs of placing, tracking, and receiving the order.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        8
+      ],
+      "source_quote": "Costs involved in placing an order and procuring the item and involves deciding on order quantities, clerical costs involved in placing the order, tracking the order, and receiving it.",
+      "notes": null
+    },
+    {
+      "id": "q018",
+      "question": "What is shortage cost?",
+      "ground_truth": "The cost that occurs when a firm runs out of stock, reflecting the consequences of not having enough inventory.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        8
+      ],
+      "source_quote": "Shortage costs occur when we run out of stock and reflects the consequences of not having enough in inventory.",
+      "notes": null
+    },
+    {
+      "id": "q019",
+      "question": "What are the three types of inventory costs described in the deck?",
+      "ground_truth": "Holding cost (carrying cost), ordering cost (setup cost), and shortage cost.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        8
+      ],
+      "source_quote": [
+        "Holding Cost (Carrying Cost)",
+        "Ordering Cost (Setup Cost)",
+        "Shortage costs occur when we run out of stock and reflects the consequences of not having enough in inventory."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q020",
+      "question": "How does lowering ordering cost affect holding/inventory cost?",
+      "ground_truth": "Lowering ordering cost results in higher inventory (holding) cost, because the firm then has to carry more stock.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        8
+      ],
+      "source_quote": "Lowering ordering cost will result in a higher inventory cost as we then have to carry more in stock.",
+      "notes": null
+    },
+    {
+      "id": "q021",
+      "question": "How does inventory holding cost change as the order quantity Q increases?",
+      "ground_truth": "Holding cost increases with order quantity Q -- higher order quantities mean holding more inventory.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        9
+      ],
+      "source_quote": "Inventory holding cost increases with the order quantity, 'Q'. Higher order quantities mean holding more inventory.",
+      "notes": null
+    },
+    {
+      "id": "q022",
+      "question": "How does ordering cost change as order quantity increases?",
+      "ground_truth": "Ordering cost decreases as order quantity increases, because holding more inventory means ordering less frequently.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        9
+      ],
+      "source_quote": "Holding more inventory means ordering less frequently, so ordering cost decreases.",
+      "notes": null
+    },
+    {
+      "id": "q023",
+      "question": "What happens to ordering cost when the order quantity is small?",
+      "ground_truth": "Ordering cost increases, because holding less inventory means ordering more frequently (though holding cost is lower).",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        9
+      ],
+      "source_quote": "A smaller order quantity results in a lower holding cost. Holding less inventory means ordering more frequently, so ordering cost increases.",
+      "notes": null
+    },
+    {
+      "id": "q024",
+      "question": "What two basic questions do inventory systems need to answer?",
+      "ground_truth": "When to order, and how much to order.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        10
+      ],
+      "source_quote": "ANSWER TWO BASIC QUESTIONS WHEN TO ORDER? HOW MUCH TO ORDER?",
+      "notes": null
+    },
+    {
+      "id": "q025",
+      "question": "What is a fixed-order quantity system?",
+      "ground_truth": "An inventory management method where a specific, pre-determined amount of stock is ordered automatically whenever inventory levels drop to a designated reorder point.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        11
+      ],
+      "source_quote": "An inventory management method where a specific, pre-determined amount of stock is ordered automatically whenever inventory levels drop to a designated reorder point.",
+      "notes": null
+    },
+    {
+      "id": "q026",
+      "question": "In the hotel-chain soap example illustrating the fixed-order quantity system, how many soaps does the hotel order, and at what inventory level?",
+      "ground_truth": "The hotel always orders 2,000 soaps (for which it gets a quantity discount), placed when the number of soaps drops to 300.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        11
+      ],
+      "source_quote": "it always orders 2,000 soaps, for which it gets a nice quantity discount, and the order is made when the number of soaps drops to 300",
+      "notes": null
+    },
+    {
+      "id": "q027",
+      "question": "What is a fixed-time period system?",
+      "ground_truth": "An inventory management method where inventory levels are checked at fixed time intervals T, and the quantity ordered varies. A target inventory level R is set, and an order is placed to restore inventory to R.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        11
+      ],
+      "source_quote": "An inventory management method where inventory levels are checked in fixed time periods, 'T', and the quantity that is ordered varies. The system sets a target inventory level, 'R', to be maintained.",
+      "notes": null
+    },
+    {
+      "id": "q028",
+      "question": "In a fixed-order quantity system, what does 'Q' represent?",
+      "ground_truth": "The constant, fixed quantity that is ordered each time.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "Quantity that is ordered with this system is constant or fixed, and is denoted by Q.",
+      "notes": null
+    },
+    {
+      "id": "q029",
+      "question": "In a fixed-order quantity system, when is a new order placed?",
+      "ground_truth": "When the inventory position (IP) drops to the reorder point (ROP).",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "An order is placed when the inventory position drops to a predetermined level, noted as the Reorder Point (ROP).",
+      "notes": null
+    },
+    {
+      "id": "q030",
+      "question": "What causes the inventory position (IP) to decrease in a fixed-order quantity system?",
+      "ground_truth": "The constant demand rate 'd', by which the inventory position is reduced.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "The system assumes a constant demand rate of 'd' by which the inventory position (IP) is reduced.",
+      "notes": null
+    },
+    {
+      "id": "q031",
+      "question": "What happens to inventory position (IP) when a goods shipment is received?",
+      "ground_truth": "Inventory position is increased by Q when goods are received -- the inventory is replenished.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "Inventory position is increased by Q when goods are received the inventory is replenished.",
+      "notes": null
+    },
+    {
+      "id": "q032",
+      "question": "Why can't inventory arrive the moment an order is placed?",
+      "ground_truth": "Because there is a lead time (L) during which the firm has to wait for the order to arrive.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "Inventory cannot arrive the moment an order is placed, as there is a certain amount of Lead Time (L) during which we have to wait for the order.",
+      "notes": null
+    },
+    {
+      "id": "q033",
+      "question": "What is the formula for order quantity Q in a fixed-time period system?",
+      "ground_truth": "Q = R - IP (the target inventory level minus the inventory position).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        13
+      ],
+      "source_quote": "'Q – order quantity' is the difference between the target inventory (R) and the inventory position (IP). Q = R – IP",
+      "notes": null
+    },
+    {
+      "id": "q034",
+      "question": "In the fixed-time period worked example (hotel chain, lavender bath soaps), how often is inventory checked?",
+      "ground_truth": "Every two weeks.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        13
+      ],
+      "source_quote": "A hotel chain uses a fixed-time period model to check inventory levels every 02 weeks for its inventory of lavender bath soaps.",
+      "notes": null
+    },
+    {
+      "id": "q035",
+      "question": "In the fixed-time period worked example, what is the target inventory level R?",
+      "ground_truth": "5,000 soaps.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        13
+      ],
+      "source_quote": "The hotel has a target inventory level R = 5,000 soaps.",
+      "notes": null
+    },
+    {
+      "id": "q036",
+      "question": "In the fixed-time period worked example, if the inventory position after two weeks is 2,800 soaps, how many soaps should be ordered?",
+      "ground_truth": "2,200 soaps (Q = R - IP = 5,000 - 2,800 = 2,200).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        13
+      ],
+      "source_quote": "it would place an order for quantity: Q = R – IP = 5,000 – 2,800 =2,200 soaps.",
+      "notes": null
+    },
+    {
+      "id": "q037",
+      "question": "What does EOQ stand for?",
+      "ground_truth": "Economic Order Quantity.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "Determining Economic Order Quantity (EOQ)",
+      "notes": null
+    },
+    {
+      "id": "q038",
+      "question": "What is Economic Order Quantity (EOQ)?",
+      "ground_truth": "An inventory management technique that determines the optimal order size a company should purchase to minimize total inventory costs, including holding and ordering costs.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "Economic Order Quantity (EOQ) is an inventory management technique that determines the optimal order size a company should purchase to minimise total inventory costs, including holding and ordering costs.",
+      "notes": null
+    },
+    {
+      "id": "q039",
+      "question": "What is Total Inventory Cost (TIC) composed of?",
+      "ground_truth": "Total Ordering Cost plus Total Holding Cost.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "Total Inventory Cost (TIC) = Total Ordering Cost + Total Holding Cost",
+      "notes": null
+    },
+    {
+      "id": "q040",
+      "question": "What is the formula for Total Inventory Cost (TIC) in terms of D, Q, S, and H?",
+      "ground_truth": "TIC = (D/Q) * S + (Q/2) * H, where D is annual demand, Q is order quantity, S is ordering cost per order, and H is holding cost per unit.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "TIC = (D/Q)*S + (Q/2)*H",
+      "notes": null
+    },
+    {
+      "id": "q041",
+      "question": "In the TIC formula, what does D/Q represent?",
+      "ground_truth": "The number of orders placed per year.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "D/Q = Number of orders per year",
+      "notes": null
+    },
+    {
+      "id": "q042",
+      "question": "In the TIC formula, what does Q/2 represent?",
+      "ground_truth": "The average annual inventory.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "Q/2 = Average annual inventory",
+      "notes": null
+    },
+    {
+      "id": "q043",
+      "question": "In the EOQ/TIC formula, what does 'S' represent?",
+      "ground_truth": "Ordering cost per unit (per order).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "S = Ordering cost per unit",
+      "notes": null
+    },
+    {
+      "id": "q044",
+      "question": "In the EOQ/TIC formula, what does 'H' represent?",
+      "ground_truth": "Holding cost per unit.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "H = Holding cost per unit",
+      "notes": null
+    },
+    {
+      "id": "q045",
+      "question": "How is the Economic Order Quantity (EOQ) mathematically determined from the TIC formula?",
+      "ground_truth": "By minimizing Total Inventory Cost (TIC) -- taking the first derivative of TIC with respect to Q, setting it to zero, and solving for Q.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        15
+      ],
+      "source_quote": "Taking first order derivative of TIC with respect to Q, Set it to zero and Solving for 'Q'.",
+      "notes": null
+    },
+    {
+      "id": "q046",
+      "question": "In Georgia's Florist's EOQ example, what is the annual demand for orchids?",
+      "ground_truth": "12,000 orchids per year (1,000 orchids/month x 12 months).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Annual demand (D) =1,000 orchids per month * 12 months = 12,000 orchids",
+      "notes": null
+    },
+    {
+      "id": "q047",
+      "question": "In Georgia's Florist's EOQ example, what is the ordering cost per order?",
+      "ground_truth": "$300 per order.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Ordering cost per order (S) = $300",
+      "notes": null
+    },
+    {
+      "id": "q048",
+      "question": "In Georgia's Florist's EOQ example, what is the product cost per orchid?",
+      "ground_truth": "$60 per unit.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "with a product cost of $60 per unit",
+      "notes": null
+    },
+    {
+      "id": "q049",
+      "question": "In Georgia's Florist's EOQ example, how is the holding cost per unit calculated, and what is its value?",
+      "ground_truth": "Holding cost is 15% of the $60 product cost, which equals $9 per unit.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Holding cost per unit (H) = 15 % of $60 = $9",
+      "notes": null
+    },
+    {
+      "id": "q050",
+      "question": "Before considering EOQ, how did Georgia's Florist decide its order quantity for orchids?",
+      "ground_truth": "They ordered orchids once a month in quantities of 1,000, simply matching the monthly demand.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Georgia's Florist ordered orchids once a month in quantities of 1,000 to simply match the monthly demand.",
+      "notes": null
+    },
+    {
+      "id": "q051",
+      "question": "In Georgia's Florist's EOQ example, approximately how many orders per year does the florist place under the EOQ policy?",
+      "ground_truth": "Approximately 13.416 orders per year (D/Q = 12,000 / 894.43).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Orders Per Year = D / Q = 12,000 / 894.43 = 13.416 (Approx)",
+      "notes": null
+    },
+    {
+      "id": "q052",
+      "question": "What question does the Reorder Point (ROP) answer?",
+      "ground_truth": "When more inventory will be reordered.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        17
+      ],
+      "source_quote": "The Reorder Point (ROP) answers the question when more inventory will be reordered.",
+      "notes": null
+    },
+    {
+      "id": "q053",
+      "question": "What is the Reorder Point (ROP)?",
+      "ground_truth": "The specific, minimum inventory level that triggers a replenishment order for an item, ensuring stock is refilled before it runs out.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        17
+      ],
+      "source_quote": "A Reorder Point (ROP) is the specific, minimum inventory level that triggers a replenishment order for an item, ensuring stock is refilled before it runs out.",
+      "notes": null
+    },
+    {
+      "id": "q054",
+      "question": "Conceptually, how much inventory should the reorder point cover?",
+      "ground_truth": "Enough inventory to ensure that demand is covered during the length of the lead time.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        17
+      ],
+      "source_quote": "The reorder point would simply be enough inventory to ensure that demand is covered during the length of the lead time.",
+      "notes": null
+    },
+    {
+      "id": "q055",
+      "question": "What is the formula for Reorder Point (ROP) under constant demand?",
+      "ground_truth": "ROP = d * L, where d is the demand rate and L is the lead time.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        18
+      ],
+      "source_quote": "Reorder Point (ROP) = d * L",
+      "notes": null
+    },
+    {
+      "id": "q056",
+      "question": "In Georgia Florists' ROP example, what is the weekly demand (d) and lead time (L)?",
+      "ground_truth": "d = 250 units per week, L = 1 week.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        18
+      ],
+      "source_quote": "d = 250 and L = 1 week",
+      "notes": null
+    },
+    {
+      "id": "q057",
+      "question": "What is the Reorder Point (ROP) for Georgia Florists?",
+      "ground_truth": "250 units (ROP = d * L = 250 * 1 week = 250 units).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        18
+      ],
+      "source_quote": "Reorder Point (ROP) = d * L = 250 * 1 week = 250 units",
+      "notes": null
+    },
+    {
+      "id": "q058",
+      "question": "Under Georgia's Florist's combined EOQ/ROP order policy, how many orchids will they order and at what inventory level?",
+      "ground_truth": "They will order approximately 895 orchids when inventory drops to 250 orchids.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        18
+      ],
+      "source_quote": "Georgia's Florists will order 894.43, say 895 orchids when inventory drops to 250 orchids.",
+      "notes": null
+    },
+    {
+      "id": "q059",
+      "question": "If Georgia's Florist orders about 895 orchids at a time under its ordering policy, what inventory concept does that quantity represent?",
+      "ground_truth": "The Economic Order Quantity (EOQ) -- the order size that minimizes total inventory cost.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16,
+        18
+      ],
+      "source_quote": "894.43, say 895 orchids",
+      "notes": "Requires connecting slide 16's computed EOQ value to slide 18's restatement of the ordering policy."
+    },
+    {
+      "id": "q060",
+      "question": "If Georgia's Florist reorders when its orchid inventory hits 250 units, what is that inventory level called?",
+      "ground_truth": "The Reorder Point (ROP).",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        18
+      ],
+      "source_quote": "Reorder Point (ROP) = d * L = 250 * 1 week = 250 units",
+      "notes": null
+    },
+    {
+      "id": "q061",
+      "question": "Which textbook and edition does this chapter's material reference?",
+      "ground_truth": "\"Supply Chain Management (An Indian Adaptation)\" by N R Sanders & S S Padhi, Wiley, 3rd edition (2023).",
+      "category": "reference",
+      "answerable": true,
+      "expected_slides": [
+        2
+      ],
+      "source_quote": "SUPPLY CHAIN MANAGEMENT (AN INDIAN ADAPTATION), N R SANDERS & S S PADHI, WILEY, 3RD ED. (2023)",
+      "notes": null
+    },
+    {
+      "id": "q062",
+      "question": "What subject and chapter does this material belong to?",
+      "ground_truth": "Subject: Supply Chain Management Strategy; Chapter 09: Inventory Management.",
+      "category": "reference",
+      "answerable": true,
+      "expected_slides": [
+        2
+      ],
+      "source_quote": "SUBJECT: SUPPLY CHAIN MANAGEMENT STRATEGY CHAPTER: 09 CHAPTER TITLE: Inventory Management",
+      "notes": null
+    },
+    {
+      "id": "q063",
+      "question": "What is the key difference between a fixed-order quantity system and a fixed-time period system?",
+      "ground_truth": "In a fixed-order quantity system, a constant, pre-determined quantity is ordered whenever inventory drops to a reorder point; in a fixed-time period system, inventory is checked at fixed time intervals and a varying quantity is ordered to restore inventory to a target level.",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        11,
+        12,
+        13
+      ],
+      "source_quote": [
+        "An inventory management method where a specific, pre-determined amount of stock is ordered automatically whenever inventory levels drop to a designated reorder point.",
+        "An inventory management method where inventory levels are checked in fixed time periods, 'T', and the quantity that is ordered varies."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q064",
+      "question": "How do holding cost and ordering cost trade off against each other as order quantity changes?",
+      "ground_truth": "As order quantity increases, holding cost increases (more inventory held) while ordering cost decreases (fewer, larger orders); as order quantity decreases, holding cost decreases but ordering cost increases (more frequent orders).",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        8,
+        9
+      ],
+      "source_quote": [
+        "Inventory holding cost increases with the order quantity, 'Q'.",
+        "Holding more inventory means ordering less frequently, so ordering cost decreases."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q065",
+      "question": "What is the difference between cycle stock and safety stock?",
+      "ground_truth": "Cycle stock is inventory for immediate use, computed from expected demand over a period; safety stock is extra inventory carried as a cushion against uncertainty in supply and demand.",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": [
+        "Cycle Stock (Lot Size Inventory) Inventory for immediate use and is computed based on expected demand over a certain time period.",
+        "Safety Stock (Buffer Stock) The extra inventory the firm carry to serve as a cushion for uncertainties in supply and demand."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q066",
+      "question": "What is the difference between anticipation inventory and pipeline inventory?",
+      "ground_truth": "Anticipation inventory is extra stock acquired ahead of expected demand surges or disruptions; pipeline inventory is goods already ordered and paid for but still in transit.",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        7
+      ],
+      "source_quote": [
+        "Anticipation inventory Extra stock acquired in advance of anticipated demand surges, seasonal spikes, or expected supply chain disruptions.",
+        "Pipeline inventory (Transportation Inventory) Goods that have been ordered and paid for but are still in transit from a supplier to a warehouse or, finally, to the customer."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q067",
+      "question": "How do 'when to order' and 'how much to order' get answered differently in the fixed-order quantity system versus the fixed-time period system?",
+      "ground_truth": "In the fixed-order quantity system, 'when' is answered by the reorder point (ROP) and 'how much' by the fixed quantity Q. In the fixed-time period system, 'when' is answered by the fixed interval T and 'how much' by Q = R - IP.",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        12,
+        13
+      ],
+      "source_quote": [
+        "An order is placed when the inventory position drops to a predetermined level, noted as the Reorder Point (ROP).",
+        "'Q – order quantity' is the difference between the target inventory (R) and the inventory position (IP)."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q068",
+      "question": "Contrast the hotel-chain soap example under the fixed-order quantity system with the hotel-chain soap example under the fixed-time period system.",
+      "ground_truth": "Under the fixed-order quantity example, a hotel always orders a fixed 2,000 soaps whenever stock drops to 300. Under the separate fixed-time period example (lavender bath soaps), inventory is checked every two weeks against a target level of 5,000, and a varying quantity (e.g. 2,200) is ordered to restore that target.",
+      "category": "comparison",
+      "answerable": true,
+      "expected_slides": [
+        11,
+        13
+      ],
+      "source_quote": [
+        "it always orders 2,000 soaps, for which it gets a nice quantity discount, and the order is made when the number of soaps drops to 300.",
+        "A hotel chain uses a fixed-time period model to check inventory levels every 02 weeks for its inventory of lavender bath soaps.",
+        "The hotel has a target inventory level R = 5,000 soaps."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q069",
+      "question": "Using the EOQ and ROP concepts together, explain Georgia's Florist's full ordering policy for orchids.",
+      "ground_truth": "Georgia's Florist's order policy is defined by both EOQ and ROP: they order the EOQ quantity (about 895 orchids) whenever their inventory position drops to the ROP (250 orchids).",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        16,
+        18
+      ],
+      "source_quote": "The order policy for Georgia's Florists is defined by the EOQ and ROP. This would mean that Georgia's Florists will order 894.43, say 895 orchids when inventory drops to 250 orchids.",
+      "notes": null
+    },
+    {
+      "id": "q070",
+      "question": "Why does a firm need both an EOQ and a ROP, rather than just one of them?",
+      "ground_truth": "EOQ answers 'how much to order' (the quantity that minimizes total inventory cost), while ROP answers 'when to order' (the inventory level that triggers a new order, accounting for lead time) -- together they fully define an ordering policy under a fixed-order quantity system.",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        10,
+        14,
+        17
+      ],
+      "source_quote": [
+        "ANSWER TWO BASIC QUESTIONS WHEN TO ORDER? HOW MUCH TO ORDER?",
+        "The Reorder Point (ROP) answers the question when more inventory will be reordered."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q071",
+      "question": "How does the choice of order quantity Q affect both inventory costs and order frequency, and how does EOQ resolve this trade-off?",
+      "ground_truth": "A larger Q increases holding cost (more inventory held) but decreases ordering cost (fewer, less frequent orders); a smaller Q decreases holding cost but increases ordering cost due to more frequent ordering. EOQ is the order quantity that minimizes the sum of these two costs (TIC).",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        8,
+        9,
+        14
+      ],
+      "source_quote": [
+        "Inventory holding cost increases with the order quantity, 'Q'.",
+        "TIC = (D/Q)*S + (Q/2)*H"
+      ],
+      "notes": null
+    },
+    {
+      "id": "q072",
+      "question": "What are the two basic questions inventory systems must answer, and how does each of the two systems in the deck answer them?",
+      "ground_truth": "The two questions are 'when to order' and 'how much to order.' The fixed-order quantity system answers them with a reorder point (ROP) and a fixed quantity (Q); the fixed-time period system answers them with a fixed review interval (T) and a variable quantity (Q = R - IP).",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        10,
+        12,
+        13
+      ],
+      "source_quote": "ANSWER TWO BASIC QUESTIONS WHEN TO ORDER? HOW MUCH TO ORDER?",
+      "notes": null
+    },
+    {
+      "id": "q073",
+      "question": "Both the EOQ example and the ROP example in the deck use Georgia's Florist. What two order-policy numbers do these two examples together establish?",
+      "ground_truth": "The EOQ example establishes the order quantity (about 895 orchids); the ROP example establishes the reorder trigger level (250 orchids). Together these define when and how much Georgia's Florist orders.",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        16,
+        18
+      ],
+      "source_quote": [
+        "Orders Per Year = D / Q = 12,000 / 894.43 = 13.416 (Approx)",
+        "Reorder Point (ROP) = d * L = 250 * 1 week = 250 units"
+      ],
+      "notes": null
+    },
+    {
+      "id": "q074",
+      "question": "What is the overall relationship between holding cost, ordering cost, and order quantity Q, and how does EOQ resolve it?",
+      "ground_truth": "Holding cost rises and ordering cost falls as Q increases, and vice versa; EOQ is the order quantity that minimizes their sum (Total Inventory Cost), found by minimizing TIC = (D/Q)S + (Q/2)H.",
+      "category": "multi_hop",
+      "answerable": true,
+      "expected_slides": [
+        8,
+        9,
+        14,
+        15
+      ],
+      "source_quote": [
+        "Inventory holding cost increases with the order quantity, 'Q'.",
+        "TIC = (D/Q)*S + (Q/2)*H",
+        "Taking first order derivative of TIC with respect to Q, Set it to zero and Solving for 'Q'."
+      ],
+      "notes": null
+    },
+    {
+      "id": "q075",
+      "question": "What is Total Ordering Cost, expressed using the TIC formula's variables?",
+      "ground_truth": "(D/Q) x S -- the number of orders per year times the ordering cost per order.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "TIC = [Number of Orders per Year * Ordering Cost per Order] + [Average Annual Inventory * Annual Holding Cost per Unit]",
+      "notes": null
+    },
+    {
+      "id": "q076",
+      "question": "What is Total Holding Cost, expressed using the TIC formula's variables?",
+      "ground_truth": "(Q/2) x H -- the average annual inventory times the annual holding cost per unit.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        14
+      ],
+      "source_quote": "[Average Annual Inventory * Annual Holding Cost per Unit]",
+      "notes": null
+    },
+    {
+      "id": "q077",
+      "question": "In the fixed-order quantity system, what two variables define the system and answer the two basic inventory questions?",
+      "ground_truth": "The Reorder Point (ROP), which answers when to order, and the order quantity Q, which answers how much to order.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "Two variables that define this system and answer the two basic questions When to place an order: when inventory reaches the reorder point ROP. How much to order: the quantity Q",
+      "notes": null
+    },
+    {
+      "id": "q078",
+      "question": "What does the fixed-time period system's target inventory level, R, represent?",
+      "ground_truth": "The inventory level the system aims to restore to at each review, checked every fixed interval T.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        11,
+        13
+      ],
+      "source_quote": "The system sets a target inventory level, 'R', to be maintained. Inventory is checked every T intervals",
+      "notes": null
+    },
+    {
+      "id": "q079",
+      "question": "In the fixed-time period system, does the order quantity stay the same each time, or does it vary?",
+      "ground_truth": "It varies from period to period -- the amount ordered depends on the inventory level at each review point.",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        11
+      ],
+      "source_quote": "Based on the inventory level at time period T, the amount of inventory that needs to be ordered will be some quantity 'Q' that varies from period to period.",
+      "notes": null
+    },
+    {
+      "id": "q080",
+      "question": "What is the ultimate goal/objective when determining the Economic Order Quantity?",
+      "ground_truth": "To determine the order size (Q) that minimizes Total Inventory Cost (TIC).",
+      "category": "explanation",
+      "answerable": true,
+      "expected_slides": [
+        15
+      ],
+      "source_quote": "the basic objective is to determine the Economic Order Quantity (EOQ). To find EOQ (Q), minimize TIC",
+      "notes": null
+    },
+    {
+      "id": "q081",
+      "question": "According to the deck, why are orchids described as expensive to order in Georgia's Florist's example?",
+      "ground_truth": "Because the ordering cost is $300 per order.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Orchids are expensive to order with an ordering cost of $300 per order.",
+      "notes": null
+    },
+    {
+      "id": "q082",
+      "question": "What percentage of product cost is used to estimate holding cost in Georgia's Florist's example?",
+      "ground_truth": "15% of product cost annually.",
+      "category": "calculation",
+      "answerable": true,
+      "expected_slides": [
+        16
+      ],
+      "source_quote": "Holding cost is estimated at 15% of product cost annually",
+      "notes": null
+    },
+    {
+      "id": "q083",
+      "question": "What are the four types of manufacturing/service inventory categories named on the deck's manufacturing & service inventory slide?",
+      "ground_truth": "Raw materials/component parts, work-in-process (WIP) inventory, finished goods inventory (all under manufacturing inventory), and service inventory.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        4
+      ],
+      "source_quote": [
+        "Manufacturing Inventory: Manufacturing organisations carry inventory.",
+        "Inventory of Raw materials and component parts that are delivered from suppliers.",
+        "Work-in-process (WIP) inventory: Raw materials and component parts enter the production process",
+        "Inventory of Finished Goods: Stock of finished goods after the completion of the production process.",
+        "Service Inventory:"
+      ],
+      "notes": null
+    },
+    {
+      "id": "q084",
+      "question": "What causes inventory position to be reduced over time in the fixed-order quantity model?",
+      "ground_truth": "A constant demand rate, denoted 'd'.",
+      "category": "definition",
+      "answerable": true,
+      "expected_slides": [
+        12
+      ],
+      "source_quote": "The system assumes a constant demand rate of 'd' by which the inventory position (IP) is reduced.",
+      "notes": null
+    },
+    {
+      "id": "q085",
+      "question": "What is ABC analysis (ABC classification) of inventory?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "ABC analysis/classification is not mentioned anywhere in the deck (slides 2-18). A topically-adjacent inventory-management concept that plausibly sounds like it belongs, but is not covered by this specific corpus."
+    },
+    {
+      "id": "q086",
+      "question": "What is Just-In-Time (JIT) inventory management?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "JIT is not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q087",
+      "question": "What is Vendor-Managed Inventory (VMI)?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "VMI is not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q088",
+      "question": "What is the bullwhip effect in supply chains?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q089",
+      "question": "How is safety stock quantitatively calculated using a target service level and the standard deviation of demand?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "The deck describes safety stock only conceptually (slide 5, slide 7) -- no statistical/service-level formula is given anywhere. Hard negative: a plausible follow-up to q011 that the corpus does not actually cover."
+    },
+    {
+      "id": "q090",
+      "question": "What is a Kanban system?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q091",
+      "question": "What is the inventory turnover ratio, and how is it calculated?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q092",
+      "question": "What is the Economic Production Quantity (EPQ) model, and how does it differ from EOQ?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Only EOQ is covered; EPQ (the production-rate variant) is not mentioned. Hard negative: adjacent to q037-q051."
+    },
+    {
+      "id": "q093",
+      "question": "How does the EOQ formula change when a supplier offers quantity discounts (the EOQ-with-quantity-discounts model)?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "The word 'quantity discount' appears once, informally, in the slide-11 hotel soap example (a fixed-order-quantity example, not an EOQ example), but no quantity-discount EOQ model or formula is given anywhere. Hard negative."
+    },
+    {
+      "id": "q094",
+      "question": "What is the difference between a perpetual inventory system and a periodic inventory system in terms of IT/accounting tracking (e.g. barcode or RFID)?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q095",
+      "question": "What is the newsvendor model for single-period inventory decisions?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q096",
+      "question": "What is the difference between independent demand and dependent demand inventory (as in MRP systems)?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Not mentioned anywhere in the deck."
+    },
+    {
+      "id": "q097",
+      "question": "What target service level (e.g. 95%, 99%) does Georgia's Florist use for its safety stock?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "No service-level percentage is stated anywhere in the deck; Georgia's Florist's example covers only EOQ and ROP, not safety stock. Hard negative: plausible-sounding extension of q056-q058 that the corpus does not support."
+    },
+    {
+      "id": "q098",
+      "question": "What general, industry-standard holding cost rate does the deck recommend for all companies?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Only Georgia's Florist's specific example (15% of product cost, slide 16) is given -- no general/industry figure is stated. Hard negative: easy to conflate with q082's example-specific answer."
+    },
+    {
+      "id": "q099",
+      "question": "What was Georgia's Florist's total cost savings from switching to the EOQ policy compared to their original once-a-month ordering policy?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "The deck states the original policy (slide 16) and the EOQ policy (slides 16-18) but never computes or compares their total costs. Hard negative requiring the model to notice a comparison isn't actually computed anywhere, not just that the topic 'sounds covered'."
+    },
+    {
+      "id": "q100",
+      "question": "What is the capital of France?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "Fully out-of-domain control question -- trivial negative, unrelated to inventory management or the corpus at all."
+    },
+    {
+      "id": "q101",
+      "question": "What is the weighted-average cost of capital (WACC) formula, and how is it used in inventory decisions?",
+      "ground_truth": null,
+      "category": "unanswerable",
+      "answerable": false,
+      "expected_slides": [],
+      "source_quote": null,
+      "notes": "'Opportunity cost of capital' is named as one component of holding cost (slide 8) but no WACC formula or explanation is given anywhere. Hard negative: adjacent to q016's real answer."
+    }
+  ]
+}

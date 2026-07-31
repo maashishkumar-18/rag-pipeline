@@ -1,0 +1,61 @@
+# Confidence Scoring Configuration
+# Evaluates retrieval quality and triggers appropriate actions
+
+# Confidence thresholds
+thresholds:
+  high: 0.75           # Above this: context is sufficient
+  medium: 0.50         # Between medium and high: usable with caution
+  low: 0.0             # Below medium: insufficient, action required
+
+# Feature weights for confidence calculation
+feature_weights:
+  reranker_scores: 0.30        # Average reranker score of top chunks
+  score_distribution: 0.15     # How scores drop off (steep drop = clear relevance)
+  chunk_diversity: 0.15        # Coverage across different sources/sections
+  context_completeness: 0.15   # Ratio of chunks used vs available
+  semantic_coverage: 0.10      # Coverage of query terms in context
+  metadata_match: 0.10         # How well metadata filters matched
+  retrieval_depth: 0.05        # Whether we used all available retrieval paths
+
+# Actions based on confidence
+actions:
+  high:
+    action: "proceed"
+    description: "Context is sufficient for generation"
+  medium:
+    action: "proceed_with_caution"
+    description: "Context may be incomplete, but usable"
+    recommendations:
+      - "Consider expanding query"
+      - "Note low confidence in response"
+  low:
+    action: "retry_or_clarify"
+    description: "Context is insufficient"
+    options:
+      - action: "retry"
+        description: "Retry with expanded parameters"
+        config:
+          increase_k: 10
+          enable_query_expansion: true
+          switch_strategy: "aggressive"
+      - action: "clarify"
+        description: "Ask user for clarification"
+      - action: "acknowledge_gap"
+        description: "Tell user the material doesn't cover this topic"
+
+# Score distribution analysis
+score_distribution:
+  steep_drop_threshold: 0.3    # Score difference indicating clear relevance separation
+  flat_threshold: 0.1          # Score difference indicating uncertain relevance
+
+# Semantic coverage
+semantic_coverage:
+  min_query_term_overlap: 0.3  # Minimum fraction of query terms in context
+  use_keywords: true           # Use extracted keywords for coverage check
+
+# Retry configuration
+retry:
+  max_retries: 2
+  increase_candidate_k: 10     # Additional candidates per retry
+  decrease_min_score: 0.05     # Lower threshold per retry
+  enable_aggressive_expansion: true

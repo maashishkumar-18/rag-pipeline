@@ -1,0 +1,57 @@
+# Document Parsing
+unstructured[all-docs]==0.14.5
+
+# Text Processing
+ftfy==6.2.0
+tiktoken
+
+# LLM & Embeddings
+# NOTE: openai==1.35.3 (the version originally pinned here) passes a
+# `proxies` kwarg to httpx.Client.__init__() (src/common/llm_client.py's
+# OpenAI/DeepSeek adapters both hit this at client construction). httpx>=0.28
+# removed that kwarg, breaking every LLM call in the pipeline with
+# "Client.__init__() got an unexpected keyword argument 'proxies'". Bumped to
+# the latest 1.x release (still pre-2.0, no breaking API changes for the
+# plain chat-completions usage in llm_client.py) since that fixed the httpx
+# incompatibility — this also removes the need to pin httpx down, which
+# matters because google-genai (below) hard-requires httpx>=0.28.1.
+openai==1.109.1
+google-generativeai==0.7.2
+# Two distinct, differently-named Google SDKs are both required — they were
+# never actually compatible substitutes for each other:
+# - google-generativeai: src/common/llm_client.py's GeminiAdapter
+#   (`import google.generativeai as genai`, `genai.GenerativeModel(...)`).
+# - google-genai: src/ingestion/embedder.py's GoogleProvider, the default
+#   embedding provider (`from google import genai`, `genai.Client(...)`) —
+#   this package was missing from requirements.txt entirely, so the default
+#   embedding path (gemini-embedding-001) could never actually run.
+google-genai==2.16.0
+
+# Vector Database
+pinecone-client==4.1.2
+
+# Retrieval
+rank_bm25==0.2.2
+
+# Reranking
+sentence-transformers==3.0.1
+
+# Evaluation — see eval/run_ragas_eval.py and eval/README.md
+ragas==0.1.10
+# langchain wrapper deps ragas needs: a LangChain-compatible judge LLM
+# (ChatOpenAI pointed at DeepSeek's OpenAI-compatible endpoint) and a
+# LangChain Embeddings wrapper (local sentence-transformers fallback —
+# see eval/README.md "Judge configuration" for why).
+langchain-openai==0.1.8
+langchain-community==0.2.6
+datasets==2.19.1
+
+# Debug tool (tools/retrieval_debug_server.py) — optional
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.7.4
+pyyaml
+numpy

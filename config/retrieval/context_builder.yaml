@@ -1,0 +1,161 @@
+# Context Builder Configuration
+# Assembles reranked chunks into structured, generation-ready context
+
+# Context assembly templates
+templates:
+  learning:
+    description: "Definition → Explanation → Example → Notes"
+    order:
+      - "definition"
+      - "explanation"
+      - "example"
+      - "formula"
+      - "diagram"
+      - "important_notes"
+      - "general"
+    section_labels:
+      definition: "DEFINITION"
+      explanation: "EXPLANATION"
+      example: "EXAMPLE"
+      formula: "FORMULA"
+      diagram: "DIAGRAM"
+      important_notes: "KEY POINTS"
+      general: "ADDITIONAL INFORMATION"
+  
+  revision:
+    description: "Keywords → Formulas → Key Points only"
+    order:
+      - "keyword"
+      - "formula"
+      - "important_notes"
+      - "definition"
+      - "general"
+    section_labels:
+      keyword: "KEYWORDS"
+      formula: "FORMULAS"
+      important_notes: "KEY POINTS"
+      definition: "QUICK DEFINITION"
+      general: "NOTES"
+  
+  qa:
+    description: "Question → Answer → Mark scheme"
+    order:
+      - "question"
+      - "answer"
+      - "marks"
+      - "explanation"
+      - "general"
+    section_labels:
+      question: "QUESTION"
+      answer: "ANSWER"
+      marks: "MARK SCHEME"
+      explanation: "EXPLANATION"
+      general: "NOTES"
+  
+  planner:
+    description: "Topic → Weightage → Subtopics"
+    order:
+      - "topic"
+      - "weightage"
+      - "subtopics"
+      - "difficulty"
+      - "general"
+    section_labels:
+      topic: "TOPIC"
+      weightage: "WEIGHTAGE"
+      subtopics: "SUBTOPICS"
+      difficulty: "DIFFICULTY"
+      general: "NOTES"
+  
+  quiz:
+    description: "Concept → Distractors → Answer"
+    order:
+      - "concept"
+      - "question"
+      - "answer"
+      - "distractors"
+      - "general"
+    section_labels:
+      concept: "CONCEPT"
+      question: "QUESTION"
+      answer: "CORRECT ANSWER"
+      distractors: "DISTRACTORS"
+      general: "NOTES"
+  
+  comparison:
+    description: "Item A → Item B → Differences → Similarities"
+    order:
+      - "item_a"
+      - "item_b"
+      - "differences"
+      - "similarities"
+      - "general"
+    section_labels:
+      item_a: "ITEM A"
+      item_b: "ITEM B"
+      differences: "DIFFERENCES"
+      similarities: "SIMILARITIES"
+      general: "NOTES"
+  
+  raw:
+    description: "No reordering, chunks as-is"
+    order: []
+    section_labels: {}
+
+# Chunk classification
+classification:
+  enabled: true
+  method: "metadata"          # "metadata" (use chunk_type from ingestion) or "heuristic" (rule-based)
+  heuristics:
+    definition:
+      patterns:
+        - "^is a"
+        - "^are"
+        - "^refers to"
+        - "^defined as"
+        - "^means"
+        - "is defined as"
+    example:
+      patterns:
+        - "^for example"
+        - '^e\.g\.'
+        - "^consider"
+        - "^suppose"
+        - "^example:"
+    formula:
+      patterns:
+        - "="
+        - "formula"
+        - "equation"
+        - "^[A-Z][a-z]+ ="
+    important_notes:
+      patterns:
+        - "^note:"
+        - "^important:"
+        - "^key point"
+        - "^remember"
+        - "exam tip"
+
+# Source citation
+citations:
+  enabled: true
+  format: "[{course} | {chapter} | {location} {page}]"
+  include_in_context: true
+  include_separate_section: false
+  max_citations_per_chunk: 1
+
+# Context assembly
+assembly:
+  max_total_tokens: 3000       # Max tokens in assembled context
+  max_chunks: 5               # Max chunks to include
+  include_metadata_header: true
+  metadata_header_format: "Context from: {course} - {chapter}"
+  separator: "\n\n---\n\n"    # Separator between sections
+  truncation_marker: "... [truncated]"
+  sort_by: "template_order"    # "template_order", "score", or "none"
+
+# Content cleaning
+cleaning:
+  remove_duplicate_lines: true
+  normalize_whitespace: true
+  strip_source_prefix_from_content: false  # Keep prefixes for traceability

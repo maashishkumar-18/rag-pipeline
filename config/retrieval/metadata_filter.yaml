@@ -1,0 +1,119 @@
+# Metadata Filter Configuration
+# Defines available filter fields and their operators
+
+# Supported operators for each field type
+operators:
+  string:
+    - "$eq"        # Exact match
+    - "$ne"        # Not equal
+    - "$in"        # In list of values
+    - "$nin"       # Not in list
+  number:
+    - "$eq"
+    - "$ne"
+    - "$gt"        # Greater than
+    - "$gte"       # Greater than or equal
+    - "$lt"        # Less than
+    - "$lte"       # Less than or equal
+  array:
+    - "$in"
+    - "$nin"
+    - "$all"       # Contains all values
+    - "$exists"    # Field exists
+
+# Available filter fields with their types and descriptions
+fields:
+  # Document metadata
+  filename:
+    type: string
+    description: "Source document filename"
+  file_type:
+    type: string
+    description: "Document type (pdf, pptx, docx)"
+  
+  # Academic hierarchy
+  course_name:
+    type: string
+    description: "Course or subject name"
+  chapter_title:
+    type: string
+    description: "Chapter title"
+  subject_area:
+    type: string
+    description: "Broad academic discipline"
+  topic:
+    type: string
+    description: "Chunk topic label"
+  
+  # Location
+  page_start:
+    type: number
+    description: "Starting page/slide number"
+  page_end:
+    type: number
+    description: "Ending page/slide number"
+  
+  # Chunk metadata
+  chunk_type:
+    type: string
+    description: "Type of chunk (slide, topic_section, split)"
+  token_count:
+    type: number
+    description: "Number of tokens in chunk"
+  upload_type:
+    type: string
+    description: "Upload category the source document belongs to (study_material, syllabus, sample_questions)"
+  
+  # Enrichment metadata
+  source_prefix:
+    type: string
+    description: "Source traceability prefix"
+  enrichment_version:
+    type: string
+    description: "Enrichment pipeline version"
+
+# Default field mappings from pipeline config to Pinecone metadata fields
+field_mappings:
+  topic: "topic"
+  course: "course_name"
+  chapter: "chapter_title"
+  subject: "subject_area"
+  file_type: "file_type"
+  filename: "filename"
+  chunk_type: "chunk_type"
+  page: "page_start"
+  upload_type: "upload_type"
+
+# Preset filter templates for common scenarios
+templates:
+  by_course:
+    description: "Filter by course name"
+    fields:
+      course_name: "$eq"
+  by_chapter:
+    description: "Filter by chapter"
+    fields:
+      chapter_title: "$eq"
+  by_topic:
+    description: "Filter by topic"
+    fields:
+      topic: "$eq"
+  by_document_type:
+    description: "Filter by document type (pdf, pptx, docx)"
+    fields:
+      file_type: "$eq"
+  by_upload_type:
+    description: "Filter by upload category (study_material, syllabus, sample_questions) — e.g. retrieve only sample-question chunks for exam-ready answers"
+    fields:
+      upload_type: "$eq"
+  by_page_range:
+    description: "Filter by page range"
+    fields:
+      page_start: "$gte"
+      page_end: "$lte"
+  current_context:
+    description: "Filter to current course, chapter, and topic from conversation state"
+    fields:
+      course_name: "$eq"
+      chapter_title: "$eq"
+      topic: "$eq"

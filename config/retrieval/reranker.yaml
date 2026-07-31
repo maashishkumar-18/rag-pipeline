@@ -1,0 +1,57 @@
+# Reranker Configuration
+# Cross-encoder reranking for candidate refinement
+
+# Reranker backend selection
+backend:
+  type: "cross_encoder"      # "cross_encoder", "llm", "colbert", or "hybrid"
+  model: null                # null = use default model for backend type
+  default_models:
+    cross_encoder: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    llm: "deepseek-chat"
+    colbert: "colbert-ir/colbertv2.0"
+
+# Candidate selection
+candidates:
+  input_k: 40               # Max candidates to consider from hybrid search
+  output_k: 5               # Number of candidates to return after reranking
+  min_score_threshold: 0.1  # Minimum reranker score to include
+
+# Scoring
+scoring:
+  normalize: true            # Normalize scores to [0, 1]
+  # "softmax" turns scores into a probability distribution that sums to
+  # 1.0 across ALL candidates, so individual scores shrink as the candidate
+  # pool grows or as relevance clusters closely (the common case: chunks
+  # from the same topically-related document). Combined with a fixed
+  # min_score_threshold below, this silently filtered out every candidate
+  # — including genuinely relevant ones — any time no single chunk stood
+  # out as a dramatically better match than the rest. "minmax" always
+  # anchors the top candidate at 1.0 regardless of pool size, so a fixed
+  # threshold behaves as intended.
+  method: "minmax"           # "softmax" or "minmax"
+  temperature: 1.0           # Softmax temperature (higher = flatter distribution; unused under minmax)
+
+# Performance
+performance:
+  batch_size: 32             # Batch size for cross-encoder inference
+  use_fp16: false            # Use half-precision for faster inference
+  cache_enabled: true        # Cache reranker results
+  cache_ttl_seconds: 3600    # Cache TTL (1 hour)
+  max_cache_entries: 10000   # Max cache entries
+
+# Cross-encoder specific
+cross_encoder:
+  max_length: 512            # Max sequence length
+  show_progress: false       # Show progress bar during batch inference
+
+# LLM reranker specific
+llm_reranker:
+  prompt_template: "llm_reranker_prompt"  # Template name or path
+  max_tokens_per_candidate: 200
+  confidence_threshold: 0.7
+
+# Hybrid reranker specific
+hybrid:
+  weights:
+    cross_encoder: 0.7
+    llm: 0.3

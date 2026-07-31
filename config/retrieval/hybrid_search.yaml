@@ -1,0 +1,46 @@
+# Hybrid Search Configuration
+# Combines semantic, keyword, and metadata search results
+
+# Search strategy weights (must sum to 1.0)
+weights:
+  semantic: 0.6
+  keyword: 0.25
+  metadata: 0.15
+
+# Candidate retrieval
+candidates:
+  semantic_k: 40       # Top-K from Pinecone semantic search
+  keyword_k: 20        # Top-K from keyword/BM25 search
+  max_total: 60        # Max candidates before deduplication
+
+# Deduplication
+dedup:
+  threshold: 0.85      # Cosine similarity above which chunks are considered duplicates
+  strategy: "score"    # "score" (keep highest) or "first" (keep first seen)
+
+# Result merging
+merge:
+  strategy: "weighted" # "weighted", "rrf" (reciprocal rank fusion), or "interleave"
+  rrf_k: 60           # RRF smoothing parameter (only used if strategy is "rrf")
+
+# Score normalization
+normalize:
+  method: "minmax"     # "minmax" or "zscore"
+  min_score: 0.0
+  max_score: 1.0
+
+# Metadata search
+metadata:
+  enabled: true
+  fields:              # Metadata fields to search against
+    - "topic"
+    - "course_name"
+    - "chapter_title"
+    - "key_topics"
+  match_threshold: 0.3 # Minimum score for metadata matches
+
+# Keyword (sparse) search backend
+keyword:
+  backend: "bm25"               # "bm25", "elasticsearch", or "semantic_fallback"
+  use_sparse: true
+  bm25_index_path: "data/bm25_index/index"  # persisted corpus + index, rebuilt after each ingestion

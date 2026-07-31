@@ -1,0 +1,11 @@
+# Post-Processing Configuration
+extract_citations: true
+citation_style: "inline"
+validate_grounding: true
+grounding_check_method: "keyword_overlap"   # "keyword_overlap", "llm_check", "both"
+remove_artifacts: true                       # Remove [HIDE], <THINK> tags
+normalize_whitespace: true
+max_answer_length: null                      # No truncation by default
+format_as_markdown: true
+min_keyword_overlap: 0.3
+min_grounding_confidence: 0.6
