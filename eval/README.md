@@ -244,6 +244,54 @@ ordinary stochasticity without masking a genuine regression — moving the
 gate closer to 0.82 would risk the CI check flagging normal variance as a
 failure, which trains you to distrust (and eventually ignore) the gate.
 
+## Citation-count baseline and `--min-avg-citations` rationale
+
+Added after `scripts/simulate_traffic.py`'s incident simulation (see main
+README's "Observability" section) found that RAGAS faithfulness alone
+doesn't catch a starved-retrieval regression: an answer built from one
+narrow-but-relevant chunk instead of several is still faithful to what it
+got, just less complete. Citation count moves instead — a real simulated
+incident (candidate pool cut from 20 to 3, `rerank_k` cut to 1) dropped
+average citations per answer by ~33% while faithfulness stayed flat. This
+gate is the harness's answer to that gap: `--min-avg-citations` (default
+`2.5`) fails the run if the golden set's average citations-per-answer
+(answerable items only) falls below it, alongside the existing `--threshold`.
+
+**The baseline run for this gate hit the exact quota problem this doc
+already warned about** ("Gemini's free embedding tier is 1000 requests/day
+... exhausted once during manual testing" above) — it happened a second
+time, this time 34 requests into a 101-item run, this time from cumulative
+embedding calls across an entire session of building and testing the
+observability layer (ingestion re-embeds the sample deck on every
+`bootstrap_pipeline()` call, and dozens of `scripts/simulate_traffic.py`
+requests plus several eval runs all ran earlier that day on the same key).
+Items 68–101 of that run (`eval/results/eval_20260805T140908Z.json`) all
+show `candidates_retrieved: 0` — a contiguous block of Gemini API failures,
+not genuine pipeline behavior. Using the full 101-item aggregate from that
+run would have produced a false, artificially-low baseline.
+
+**What was actually used**: the clean, unaffected subset — items 1–67, all
+answerable, all real Gemini-embedded retrieval (same provider CI runs with,
+so it's a valid comparison point, just a smaller sample). That subset's
+composite score was **0.7928** — close enough to the documented 0.8203 full-run
+baseline above to trust the subset isn't itself skewed — and its average
+citation count was **3.075**.
+
+**Why the default is 2.5, not closer to 3.07**: same logic as the 0.75
+score threshold — a margin below the observed baseline that absorbs
+ordinary variance without masking a real regression. Chosen specifically to
+still fail on the magnitude of drop the simulated incident actually
+produced (~33%, i.e. down to ~2.06 from 3.07) while tolerating smaller
+normal fluctuation; citation counts are coarser/more discrete than
+continuous RAGAS scores, so this margin (~19%) is wider than the 0.75
+threshold's ~9%.
+
+**Known follow-up**: re-run the full 101-item set once the Gemini quota
+resets, to get a complete (not 67/101) baseline and confirm 2.5 still holds
+across the unanswerable items too. Not blocking — the citations gate only
+scores answerable items, and the clean subset is large enough (67) to be a
+reasonable starting threshold.
+
 ## Known limitations found via this eval harness
 
 Building and running this harness surfaced four distinct issues — one fixed

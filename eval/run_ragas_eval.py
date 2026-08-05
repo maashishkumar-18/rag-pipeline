@@ -551,12 +551,27 @@ def build_report(
             "routing_decision": r.result.routing_decision,
             "candidates_retrieved": r.result.candidates_retrieved,
             "candidates_reranked": r.result.candidates_reranked,
+            "citations_count": len(r.response.citations),
         })
 
     scored_items = [it for it in items_report if it["composite_score"] is not None]
     all_scores = [it["composite_score"] for it in scored_items]
     aggregate_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
     unscored_count = len(items_report) - len(scored_items)
+
+    # Citation-count gate — added after scripts/simulate_traffic.py's
+    # incident simulation found that RAGAS faithfulness alone doesn't catch
+    # a starved-retrieval regression: an answer from 1 narrow chunk instead
+    # of 5 well-chosen ones is still "faithful" to what little it got, but
+    # cites a third fewer sources. Computed over answerable items only —
+    # correctly-refused unanswerable items legitimately have 0 citations
+    # and would bias the average down for the wrong reason. See
+    # eval/README.md "Citation-count baseline" for the threshold rationale.
+    answerable_items = [it for it in items_report if it["answerable"]]
+    avg_citations = (
+        sum(it["citations_count"] for it in answerable_items) / len(answerable_items)
+        if answerable_items else 0.0
+    )
 
     def _breakdown(key_fn):
         buckets: Dict[str, List[float]] = {}
@@ -624,7 +639,16 @@ def build_report(
             if skip_ragas else None
         ),
         "threshold": args.threshold,
-        "passed": aggregate_score >= args.threshold,
+        "avg_citations_answerable": round(avg_citations, 3),
+        "min_avg_citations": args.min_avg_citations if args.min_avg_citations > 0 else None,
+        "citations_gate_passed": (
+            True if (skip_ragas or args.min_avg_citations <= 0)
+            else avg_citations >= args.min_avg_citations
+        ),
+        "passed": (
+            (aggregate_score >= args.threshold)
+            and (skip_ragas or args.min_avg_citations <= 0 or avg_citations >= args.min_avg_citations)
+        ),
         "breakdown_by_category": breakdown_by_category,
         "breakdown_by_answerability": breakdown_by_answerability,
         "low_scoring_items": [
@@ -646,11 +670,20 @@ def render_markdown(report: Dict[str, Any]) -> str:
         "# RAGAS Evaluation Report",
         "",
         f"**Aggregate score: {report['aggregate_score']:.4f}** "
-        f"(threshold {report['threshold']:.2f} — {'PASSED' if report['passed'] else 'FAILED'})",
+        f"(threshold {report['threshold']:.2f} — "
+        f"{'PASSED' if report['aggregate_score'] >= report['threshold'] else 'FAILED'})",
     ]
     if report.get("aggregate_score_note"):
         lines.append(f"*{report['aggregate_score_note']}*")
+    if report.get("min_avg_citations") is not None:
+        lines.append(
+            f"**Avg citations/answer (answerable items): {report['avg_citations_answerable']:.2f}** "
+            f"(min {report['min_avg_citations']:.2f} — "
+            f"{'PASSED' if report['citations_gate_passed'] else 'FAILED'})"
+        )
     lines += [
+        "",
+        f"**Overall: {'PASSED' if report['passed'] else 'FAILED'}**",
         "",
         f"- Run at: {meta['timestamp']}",
         f"- Sample size: {meta['sample_size']} / {meta['total_items_in_golden_set']} golden items (seed={meta['seed']})",
@@ -719,7 +752,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
         agent_flag = " ⚠️ agent path + 0 candidates" if it["agent_used"] and it["candidates_retrieved"] == 0 else ""
         lines.append(
             f"**Retrieval:** routing={it['routing_decision']}, agent_used={it['agent_used']}, "
-            f"candidates_retrieved={it['candidates_retrieved']}{agent_flag}"
+            f"candidates_retrieved={it['candidates_retrieved']}, citations={it['citations_count']}{agent_flag}"
         )
         lines.append("")
 
@@ -735,6 +768,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sample-size", type=int, default=None, help="Run against a random subset of N items instead of the full golden set (fast iteration).")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for --sample-size sampling.")
     parser.add_argument("--threshold", type=float, default=0.75, help="Aggregate score CI gate — exit non-zero if the aggregate falls below this.")
+    parser.add_argument(
+        "--min-avg-citations", type=float, default=2.5,
+        help="Average citations-per-answer CI gate (answerable items only) — exit non-zero if "
+             "the average falls below this. Pass 0 (or negative) to disable. Added after "
+             "scripts/simulate_traffic.py's incident simulation found that RAGAS faithfulness "
+             "alone doesn't catch a starved-retrieval regression (a narrow-but-grounded answer "
+             "still scores well); citation count does. Default derived from a real baseline of "
+             "3.07 (see eval/README.md 'Citation-count baseline' for the full rationale, "
+             "including a caveat about the run this baseline came from).",
+    )
     parser.add_argument("--flag-threshold", type=float, default=0.5, help="Per-question score below which an item is flagged as a notable failure in the report.")
     parser.add_argument("--golden-set", type=Path, default=GOLDEN_SET_PATH, help="Path to golden_qa_set.json.")
     parser.add_argument("--output-dir", type=Path, default=RESULTS_DIR, help="Directory to write the JSON/Markdown report to.")
@@ -820,10 +863,17 @@ def main() -> int:
         )
         return 0
 
+    score_passed = report["aggregate_score"] >= args.threshold
     logger.info(
         "Aggregate score: %.4f (threshold %.2f) — %s",
-        report["aggregate_score"], args.threshold, "PASSED" if report["passed"] else "FAILED",
+        report["aggregate_score"], args.threshold, "PASSED" if score_passed else "FAILED",
     )
+    if args.min_avg_citations > 0:
+        logger.info(
+            "Avg citations/answer: %.3f (min %.2f) — %s",
+            report["avg_citations_answerable"], args.min_avg_citations,
+            "PASSED" if report["citations_gate_passed"] else "FAILED",
+        )
 
     return 0 if report["passed"] else 1
 
