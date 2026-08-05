@@ -75,6 +75,9 @@ from src.generation.config import (
     ConfidenceLevel as GenConfidenceLevel,
 )
 
+from observability.tracing import traced_pipeline_call, current_trace_id, current_trace_url, score_trace, flush
+from observability.metrics_store import MetricsStore, PipelineCallMetrics
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("ragas_eval")
 
@@ -132,30 +135,22 @@ def score_unanswerable_item(result: OrchestratorResult, response: GenerationResp
         "confidence_level": result.confidence.level.value,
         "refusal_phrase_detected": refusal_phrase,
         "generation_error": response.error_type,
+        # Exposed so callers outside this scoring function (e.g.
+        # observability metrics recording, which needs "did the pipeline
+        # refuse" for every item, not just unanswerable ones) can reuse this
+        # exact signal instead of re-deriving it.
+        "refused": refused,
     }
     return (1.0 if refused else 0.0), signals
 
 
 # ============================================================================
-# DeepSeek cost estimate
-#
-# No pricing constant exists anywhere in this repo for the generation LLM
-# (only EmbeddingGenerator.estimate_cost() exists, and only for embedding
-# providers — see main README "Roadmap" item 5). These are deepseek-chat's
-# published cache-miss rates at https://api-docs.deepseek.com/quick_start/pricing
-# at the time this script was written — approximate, update if DeepSeek's
-# pricing changes.
+# DeepSeek cost estimate — see src/common/pricing.py for the constants and
+# rationale (moved there so observability/tracing.py can reuse it without
+# pulling in this module's heavy transitive deps).
 # ============================================================================
 
-DEEPSEEK_PRICE_PER_1M_INPUT_USD = 0.27
-DEEPSEEK_PRICE_PER_1M_OUTPUT_USD = 1.10
-
-
-def estimate_deepseek_cost(input_tokens: int, output_tokens: int) -> float:
-    return (
-        (input_tokens / 1_000_000) * DEEPSEEK_PRICE_PER_1M_INPUT_USD
-        + (output_tokens / 1_000_000) * DEEPSEEK_PRICE_PER_1M_OUTPUT_USD
-    )
+from src.common.pricing import estimate_deepseek_cost  # noqa: E402
 
 
 # ============================================================================
@@ -254,41 +249,65 @@ class PipelineRecord:
     result: OrchestratorResult
     response: GenerationResponse
     pipeline_time_ms: float
+    langfuse_trace_id: Optional[str] = None
+    langfuse_trace_url: Optional[str] = None
 
 
-def run_pipeline_phase(pipeline: Pipeline, items: List[Dict[str, Any]]) -> "tuple[List[PipelineRecord], int, int]":
+def run_pipeline_phase(
+    pipeline: Pipeline, items: List[Dict[str, Any]], env: str = "ci"
+) -> "tuple[List[PipelineRecord], int, int]":
     records: List[PipelineRecord] = []
     running_input_tokens = 0
     running_output_tokens = 0
 
     for idx, item in enumerate(items, start=1):
         item_start = time.time()
+        request_id = str(uuid.uuid4())
 
-        result = pipeline.retrieval_orchestrator.retrieve(
+        # One trace per golden-set item, tagged env=ci — RAGAS/composite
+        # scores get attached after the fact (see record_observability_metrics),
+        # once Phase B has scored this batch, since score computation and
+        # trace lifetime don't overlap (RAGAS runs as one batched evaluate()
+        # call across all answerable items, not interleaved per item).
+        with traced_pipeline_call(
+            request_id=request_id,
             query=item["question"],
-            pipeline_config=LEARNING_PIPELINE,
-            conversation_state=pipeline.conversation_state,
-            namespace=pipeline.namespace,
-        )
+            env=env,
+            tags=[item["category"], "answerable" if item["answerable"] else "unanswerable"],
+            metadata={"golden_set_id": item["id"]},
+        ) as trace:
+            result = pipeline.retrieval_orchestrator.retrieve(
+                query=item["question"],
+                pipeline_config=LEARNING_PIPELINE,
+                conversation_state=pipeline.conversation_state,
+                namespace=pipeline.namespace,
+            )
 
-        retrieval_metadata = RetrievalMetadata(
-            confidence_score=result.confidence.score,
-            confidence_level=GenConfidenceLevel(result.confidence.level.value),
-            retrieval_time_ms=result.total_time_ms,
-            total_chunks_retrieved=result.candidates_retrieved,
-            namespace=pipeline.namespace,
-            top_k=len(result.assembled_context.chunks),
-            retrieval_method=result.routing_decision,
-        )
+            retrieval_metadata = RetrievalMetadata(
+                confidence_score=result.confidence.score,
+                confidence_level=GenConfidenceLevel(result.confidence.level.value),
+                retrieval_time_ms=result.total_time_ms,
+                total_chunks_retrieved=result.candidates_retrieved,
+                namespace=pipeline.namespace,
+                top_k=len(result.assembled_context.chunks),
+                retrieval_method=result.routing_decision,
+            )
 
-        request = GenerationRequest(
-            request_id=str(uuid.uuid4()),
-            query=item["question"],
-            mode=GenerationMode.CONTEXT_AWARE,
-            chunks=result.assembled_context.chunks,
-            retrieval_metadata=retrieval_metadata,
-        )
-        response = pipeline.generation_orchestrator.generate(request)
+            request = GenerationRequest(
+                request_id=request_id,
+                query=item["question"],
+                mode=GenerationMode.CONTEXT_AWARE,
+                chunks=result.assembled_context.chunks,
+                retrieval_metadata=retrieval_metadata,
+            )
+            response = pipeline.generation_orchestrator.generate(request)
+            trace.update(output={"answer": response.answer, "is_grounded": response.is_grounded})
+
+            # Must capture inside the `with` block — current_trace_id()/
+            # current_trace_url() need an active span; there isn't one once
+            # traced_pipeline_call's context manager has exited.
+            trace_id = current_trace_id()
+            trace_url = current_trace_url()
 
         running_input_tokens += response.usage.input_tokens
         running_output_tokens += response.usage.output_tokens
@@ -314,9 +333,69 @@ def run_pipeline_phase(pipeline: Pipeline, items: List[Dict[str, Any]]) -> "tupl
             result=result,
             response=response,
             pipeline_time_ms=pipeline_time_ms,
+            langfuse_trace_id=trace_id,
+            langfuse_trace_url=trace_url,
         ))
 
     return records, running_input_tokens, running_output_tokens
+
+
+# ============================================================================
+# Observability — push metrics + scores now that both the pipeline run
+# (Phase A, with trace ids captured per item) and RAGAS scoring (Phase B,
+# batched) have completed.
+# ============================================================================
+
+def record_observability_metrics(
+    records: List["PipelineRecord"],
+    ragas_scores: Dict[str, Dict[str, float]],
+    env: str = "ci",
+) -> None:
+    store = MetricsStore()
+
+    for r in records:
+        _, refusal_signals = score_unanswerable_item(r.result, r.response)
+        refused = bool(refusal_signals["refused"])
+
+        item_metrics = ragas_scores.get(r.id, {}) if r.answerable else {}
+        faithfulness = item_metrics.get("faithfulness")
+        composite = (
+            (sum(item_metrics.values()) / len(item_metrics)) if item_metrics
+            else (1.0 if refused else 0.0)
+        )
+
+        cost_usd = estimate_deepseek_cost(r.response.usage.input_tokens, r.response.usage.output_tokens)
+
+        store.record(PipelineCallMetrics(
+            request_id=r.response.request_id,
+            env=env,
+            query=r.question,
+            total_time_ms=r.pipeline_time_ms,
+            retrieval_time_ms=r.result.total_time_ms,
+            generation_time_ms=r.response.generation_time_ms,
+            stage_timings=r.result.timing_breakdown,
+            confidence_score=r.result.confidence.score,
+            confidence_level=r.result.confidence.level.value,
+            retrieval_hit=r.result.confidence.level.value != "low",
+            candidates_retrieved=r.result.candidates_retrieved,
+            is_grounded=r.response.is_grounded,
+            citations_count=len(r.response.citations),
+            refused=refused,
+            input_tokens=r.response.usage.input_tokens,
+            output_tokens=r.response.usage.output_tokens,
+            cost_usd=cost_usd,
+            prompt_version=r.response.prompt_version,
+            model_name=r.response.model_info.model_name,
+            retrieval_pipeline_name=r.result.pipeline_name,
+            faithfulness_score=faithfulness,
+            langfuse_trace_id=r.langfuse_trace_id,
+            langfuse_trace_url=r.langfuse_trace_url,
+        ))
+
+        if r.langfuse_trace_id:
+            score_trace(r.langfuse_trace_id, "composite_score", composite)
+            if faithfulness is not None:
+                score_trace(r.langfuse_trace_id, "faithfulness", faithfulness)
 
 
 # ============================================================================
@@ -704,6 +783,9 @@ def main() -> int:
         ragas_scores, judge_tokens = run_ragas_phase(records)
 
     duration_seconds = time.time() - run_start
+
+    record_observability_metrics(records, ragas_scores, env="ci")
+    flush()  # short-lived script — force-flush buffered Langfuse spans/scores before exit
 
     report = build_report(
         records=records,

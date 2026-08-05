@@ -105,6 +105,11 @@ tools/           retrieval_debug_server.py — local FastAPI wrapper for
                  manually exercising retrieval quality
 eval/            golden_qa_set.json (101 pairs) + run_ragas_eval.py (RAGAS
                  scoring harness) — see eval/README.md
+observability/   tracing.py (Langfuse client + span helpers), metrics_store.py
+                 (local SQLite store) — see "Observability" below
+scripts/         simulate_traffic.py — traffic generator with an injectable
+                 incident, for the observability dashboard
+dashboard/       app.py — Streamlit observability dashboard
 tests/           (empty — see Roadmap)
 ```
 
@@ -164,6 +169,126 @@ material. To point this at a different kind of corpus:
   `ConceptRegistry` with your own acronym/synonym set, or point it at a
   JSON file via `synonyms_path`.
 
+## Observability
+
+An extension of the pipeline above, not a separate project: tracing
+(Langfuse) plus quality/cost/latency metrics over CI and simulated traffic,
+built non-invasively — no component in `src/retrieval/` or `src/generation/`
+was rewritten to add it.
+
+- **`observability/tracing.py`** — a Langfuse client wrapper that's a
+  complete no-op if `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` aren't set,
+  so the pipeline behaves identically with or without tracing configured.
+  The single integration point for retrieval is
+  `RetrievalOrchestrator._safe_call_component` — one wrap there covers all
+  9 retrieval stages (rewriter, router, agent, expander, filter_builder,
+  hybrid_search, reranker, context_builder, confidence_scorer) without
+  touching any of their individual modules. Generation is wrapped at its 3
+  existing phase boundaries in `GenerationOrchestrator.generate()` (prompt
+  build, LLM call, post-process).
+- **`observability/metrics_store.py`** — a local SQLite store (WAL mode) for
+  the aggregate queries a dashboard needs (latency percentiles, cost, quality
+  trends) that would be slow/rate-limited to compute by repeatedly querying
+  Langfuse's API. Every row also carries the Langfuse trace URL for drill-down.
+- **`scripts/simulate_traffic.py`** — fires golden-set + adversarial/
+  out-of-corpus queries at the real pipeline, deliberately degrading the
+  retrieval config (BM25 disabled, `rerank_k` cut to 1, retry-on-low-
+  confidence off — see `DEGRADED_PIPELINE`) for a configurable window to
+  produce a reproducible "misconfigured reranker" incident, and samples a
+  subset of answered requests through RAGAS faithfulness scoring.
+- **`dashboard/app.py`** — a Streamlit app (not just a Langfuse screenshot)
+  reading `metrics_store`: latency P50/P95 + per-stage breakdown, faithfulness
+  over time with the incident window shaded, refusal/retrieval-hit rate,
+  cost per-request and cumulative, and a recent-requests table linking out
+  to each request's full trace waterfall in Langfuse.
+
+### Setup
+
+Optional — everything above degrades to a no-op without it. Create a free
+project at [cloud.langfuse.com](https://cloud.langfuse.com), then set
+`LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`/`LANGFUSE_HOST` in `.env`.
+
+```bash
+python -m scripts.simulate_traffic          # populate observability/metrics.db
+streamlit run dashboard/app.py              # view at localhost:8501
+```
+
+`eval/run_ragas_eval.py` also pushes a trace per golden-set item (tagged
+`env:ci`) and attaches the RAGAS/composite score to it after judging, so CI
+runs are visible in both places too — see `record_observability_metrics()`.
+
+### Environment bugs found by actually running this, not just writing it
+
+Building this required, for the first time, actually running the full
+ingestion → retrieval → generation pipeline end-to-end from a clean,
+isolated `.venv` — previously it had only ever run against a developer
+machine's existing global Python install, which silently had gaps papered
+over by whatever had accumulated there from unrelated work. A clean venv
+surfaced all of them:
+
+- **`google-generativeai==0.7.2` → `0.8.6`**: the old pin's
+  `google-ai-generativelanguage` transitive dependency caps `protobuf<5.0dev`,
+  which conflicts with `streamlit==1.61.0`'s `protobuf>=5.26.1` floor.
+- **`fastapi==0.111.0` unpinned to `>=0.115.0`**: the old pin's `starlette<0.38`
+  ceiling conflicts with streamlit's `starlette>=0.46.0` floor.
+- **`starlette` pinned `<1.0`**: streamlit 1.61.0's own declared range
+  (`<2,>=0.46.0`) is wide enough for pip to resolve starlette 1.4.0, but
+  streamlit's vendored GZip middleware isn't actually compatible with 1.x's
+  internals — every request crashed with `GZipResponder.__init__() missing
+  1 required keyword-only argument`. Found by running `streamlit run
+  dashboard/app.py` and hitting a real 500, not by reading changelogs.
+- **Missing `python-magic-bin` on Windows**: this one looks unrelated to
+  observability at first glance, but `scripts/simulate_traffic.py` and
+  `eval/run_ragas_eval.py` both call the *existing* ingestion pipeline's
+  `bootstrap_pipeline()` to get real chunks to retrieve against — so
+  exercising either one for the first time in an isolated venv is also the
+  first time `unstructured`'s pptx parsing (`DocumentParser`) ran without
+  whatever had made it work globally before. It segfaulted natively rather
+  than raising a catchable Python exception; `requirements.txt` now installs
+  the Windows-only wheel explicitly instead of relying on it being present
+  by accident.
+- **Dashboard incident-window shading spanned min-to-max across two
+  non-contiguous simulation runs**, falsely shading untouched requests in
+  between. `scripts/simulate_traffic.py` computes its incident window as a
+  fraction of *that run's* request count, so two separate invocations landing
+  in the same `metrics.db` produce two disjoint incident-tagged clusters, not
+  one — `dashboard/app.py` now shades each contiguous run of incident-tagged
+  requests separately instead of one band spanning the earliest to the latest.
+
+### Two non-obvious things found by actually running this, not just writing it
+
+- **Sibling spans don't share a trace unless something wraps them.** Verified
+  empirically: two sequential `traced_span()` calls with no shared parent
+  context get two different trace IDs, not one. That's why both
+  `RetrievalOrchestrator.retrieve()` and `GenerationOrchestrator.generate()`
+  each open their own outer span around their whole body — otherwise the 9
+  retrieval-component spans (and the 3 generation-phase spans) would land as
+  9 separate top-level traces instead of one waterfall.
+- **No backdated timestamps.** The original plan called for compressing a
+  multi-day traffic trend into one run via fabricated past timestamps.
+  Checked the Langfuse SDK directly first: its span/trace creation APIs
+  don't accept a custom start time, so traces are always stamped with real
+  wall-clock time. Backdating only the local SQLite rows would make the
+  dashboard's time axis disagree with what a reviewer sees after clicking a
+  trace link — so every timestamp here is real, and the incident window is
+  identified by request sequence and `retrieval_pipeline_name`, not calendar
+  date.
+
+### Honest result from the current sample run
+
+`scripts/simulate_traffic.py` was run twice against the sample corpus (58
+requests total, 14 tagged with the degraded config). The degradation
+mechanism itself is verified working — incident-tagged requests are
+correctly routed through `DEGRADED_PIPELINE` and tagged as such in both
+Langfuse and `metrics.db` — but at this sample size and faithfulness-sample
+rate, the 3 faithfulness samples that happened to fall inside the incident
+window all still scored 1.0; the one low score observed (0.67) fell
+*outside* the incident window. That's a real small-sample-size result, not
+a hidden success — a larger `--num-requests` and/or a denser
+`--faithfulness-sample-rate` would be needed for a demo run that reliably
+shows the drop. The refusal-rate and latency trends (visible in the
+dashboard regardless of sample size) are unaffected by this.
+
 ## Roadmap
 
 The retrieval architecture is intentionally the mature part of this
@@ -189,6 +314,12 @@ project; evaluation and CI are the deliberately-unbuilt next layer:
    multi-topic chunk dilution hurting single-term queries (finer-grained
    chunking for multi-item topical spans) — both root-caused, neither
    fixed yet, see that doc for why.
-6. **Cost/latency dashboard** — per-request token/cost tracking already
-   exists in `UsageStats`/`EmbeddingGenerator.estimate_cost()`; nothing
-   currently aggregates it.
+6. ~~**Cost/latency dashboard**~~ — done: Langfuse tracing +
+   `observability/metrics_store.py` + `dashboard/app.py`, see
+   "Observability" above.
+7. **CI regression gating on quality metrics** — extend
+   `.github/workflows/eval.yml` to fail the build on a faithfulness/cost/
+   latency regression against a committed baseline, the same way
+   `eval/run_ragas_eval.py`'s aggregate-score threshold already gates on
+   RAGAS score. Not built yet; the observability layer above only traces
+   and dashboards CI/simulated runs, it doesn't gate on them.

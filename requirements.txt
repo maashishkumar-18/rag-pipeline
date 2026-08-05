@@ -1,5 +1,13 @@
 # Document Parsing
 unstructured[all-docs]==0.14.5
+# unstructured's pptx/docx parsing needs libmagic. Linux (incl. CI) gets it
+# via the `libmagic1` system package (see .github/workflows/eval.yml) — no
+# separate pip package needed there, and python-magic-bin isn't published
+# for Linux anyway. Windows has no libmagic system package, so it needs this
+# bundled wheel instead; without it, DocumentParser().parse() segfaults/
+# crashes native-side deep inside unstructured's file-type detection rather
+# than raising a catchable Python exception.
+python-magic-bin==0.4.14; sys_platform == "win32"
 
 # Text Processing
 ftfy==6.2.0
@@ -16,7 +24,15 @@ tiktoken
 # incompatibility — this also removes the need to pin httpx down, which
 # matters because google-genai (below) hard-requires httpx>=0.28.1.
 openai==1.109.1
-google-generativeai==0.7.2
+# Bumped from 0.7.2: that version pulls in google-ai-generativelanguage<0.7,
+# which caps protobuf<5.0dev — conflicts with streamlit==1.61.0's
+# protobuf>=5.26.1 requirement (see Observability section below). 0.8.6
+# pulls in google-ai-generativelanguage==0.6.15 (protobuf<6.0dev,>=3.20.2
+# — overlaps with streamlit's range) and keeps the same `genai.GenerativeModel`
+# API GeminiAdapter uses (src/common/llm_client.py), just with a
+# FutureWarning that the classic google.generativeai package is deprecated
+# in favor of google.genai — not acted on here, out of scope for this change.
+google-generativeai==0.8.6
 # Two distinct, differently-named Google SDKs are both required — they were
 # never actually compatible substitutes for each other:
 # - google-generativeai: src/common/llm_client.py's GeminiAdapter
@@ -47,8 +63,30 @@ langchain-community==0.2.6
 datasets==2.19.1
 
 # Debug tool (tools/retrieval_debug_server.py) — optional
-fastapi==0.111.0
+# fastapi==0.111.0 (originally pinned here) pins starlette<0.38, which
+# conflicts with streamlit==1.61.0's starlette<2,>=0.46.0 requirement (below)
+# — only surfaces once both are installed together, since this tool and the
+# observability stack were added independently. Unpinned to let pip resolve
+# a mutually-compatible fastapi/starlette version instead of hand-picking one.
+fastapi>=0.115.0
 uvicorn[standard]==0.30.1
+
+# Observability — see observability/ and dashboard/app.py
+# Langfuse Cloud free tier for tracing (observability/tracing.py is a no-op
+# if LANGFUSE_* env vars are unset, so this stays a soft dependency).
+langfuse==4.14.2
+streamlit==1.61.0
+plotly==6.9.0
+# streamlit==1.61.0 declares starlette<2,>=0.46.0, which is wide enough for
+# pip to resolve starlette 1.x (the fastapi>=0.115.0 unpinned-version
+# resolution above pulled starlette 1.4.0) — but streamlit's own vendored
+# GZip middleware shim (starlette_gzip_middleware.py) isn't actually
+# compatible with the 1.x internals: it crashes every request with
+# `TypeError: GZipResponder.__init__() missing 1 required keyword-only
+# argument: 'thread_minimum_size'`, discovered by actually running
+# `streamlit run dashboard/app.py` and hitting a 500. Pinned below 1.0 to
+# stay on the line streamlit 1.61.0 was actually built/tested against.
+starlette>=0.46.0,<1.0
 
 # Utilities
 python-dotenv==1.0.1

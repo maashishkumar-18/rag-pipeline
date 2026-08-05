@@ -35,6 +35,7 @@ from src.retrieval.reranker import Reranker, RerankerConfig
 from src.retrieval.context_builder import ContextBuilder, ContextBuilderConfig, AssembledContext
 from src.retrieval.confidence import ConfidenceScorer, ConfidenceConfig, ConfidenceResult
 from src.ingestion.vector_store import VectorStore
+from observability.tracing import traced_span, safe_dict
 
 load_dotenv()
 
@@ -343,10 +344,42 @@ class RetrievalOrchestrator:
         Returns:
             OrchestratorResult with assembled context and full diagnostics
         """
+        # Wraps the whole retry loop in one span so every _safe_call_component
+        # span from every attempt nests under a single trace — without this,
+        # sibling top-level spans (no shared parent context) each start a
+        # new trace instead of sharing one (verified empirically: Langfuse's
+        # OTEL context only shares a trace ID across nested spans, not
+        # sequential sibling ones). Matters for callers that invoke
+        # retrieve() standalone (e.g. tools/retrieval_debug_server.py)
+        # without an enclosing observability.tracing.traced_pipeline_call.
+        with traced_span(
+            "retrieve",
+            input={
+                "query": query,
+                "pipeline_name": pipeline_config.name,
+                "namespace": safe_dict(namespace),
+            },
+        ) as span:
+            result = self._retrieve_with_retries(
+                query, pipeline_config, conversation_state, namespace
+            )
+            span.update(output=safe_dict(result))
+            return result
+
+    def _retrieve_with_retries(
+        self,
+        query: str,
+        pipeline_config: PipelineConfig,
+        conversation_state: ConversationState,
+        namespace: Union[str, List[str]],
+    ) -> OrchestratorResult:
+        """Retry-loop body extracted from retrieve() so the tracing span in
+        retrieve() wraps every attempt without duplicating span setup at
+        each of this method's several return points."""
         state = OrchestratorState(self.config)
         current_pipeline = pipeline_config
         attempt = 0
-        
+
         while attempt <= self.config.max_retries:
             attempt += 1
             state.total_attempts = attempt
@@ -638,35 +671,49 @@ class RetrievalOrchestrator:
         """
         orchestrator_state.check_timeout()
         orchestrator_state.mark_component(name)
-        
+
         component_start = time.time()
-        try:
-            result = func(*args, **kwargs)
-            duration = (time.time() - component_start) * 1000
-            orchestrator_state.record_timing(name, duration)
-            return result
-            
-        except RetrievalTimeoutError:
-            # Propagate timeout
-            raise
-            
-        except Exception as e:
-            orchestrator_state.mark_failed(name)
-            duration = (time.time() - component_start) * 1000
-            orchestrator_state.record_timing(name, duration)
-            
-            logger.error(f"Component '{name}' failed after {duration:.0f}ms: {e}")
-            
-            # Try to get a fallback result for critical components
-            fallback = self._get_component_fallback(name, *args, **kwargs)
-            if fallback is not None:
-                logger.info(f"Using fallback for component '{name}'")
-                return fallback
-            
-            # No fallback available
-            raise ComponentFailureError(
-                f"Component '{name}' failed: {e}"
-            ) from e
+        # One traced_span per component call — this single wrap point covers
+        # all 9 retrieval stages (rewriter, router, agent, expander,
+        # filter_builder, hybrid_search, reranker, context_builder,
+        # confidence_scorer) without touching any of their individual
+        # modules. See observability/tracing.py traced_span() docstring for
+        # why component failures re-raise through the span instead of being
+        # swallowed by it.
+        with traced_span(name, input={"args": args, "kwargs": kwargs}) as span:
+            try:
+                result = func(*args, **kwargs)
+                duration = (time.time() - component_start) * 1000
+                orchestrator_state.record_timing(name, duration)
+                span.update(output=safe_dict(result))
+                return result
+
+            except RetrievalTimeoutError:
+                # Propagate timeout
+                raise
+
+            except Exception as e:
+                orchestrator_state.mark_failed(name)
+                duration = (time.time() - component_start) * 1000
+                orchestrator_state.record_timing(name, duration)
+
+                logger.error(f"Component '{name}' failed after {duration:.0f}ms: {e}")
+
+                # Try to get a fallback result for critical components
+                fallback = self._get_component_fallback(name, *args, **kwargs)
+                if fallback is not None:
+                    logger.info(f"Using fallback for component '{name}'")
+                    span.update(
+                        output={"fallback_used": True},
+                        level="WARNING",
+                        status_message=str(e),
+                    )
+                    return fallback
+
+                # No fallback available
+                raise ComponentFailureError(
+                    f"Component '{name}' failed: {e}"
+                ) from e
     
     def _get_component_fallback(self, name: str, *args, **kwargs) -> Any:
         """
