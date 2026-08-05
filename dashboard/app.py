@@ -55,6 +55,38 @@ def hex_to_rgba(hex_color: str, alpha: float) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+def add_incident_bands(fig: go.Figure, df: pd.DataFrame, label: str = "incident: degraded retrieval config") -> None:
+    """
+    Shade each contiguous run of incident-tagged requests separately —
+    incident rows aren't necessarily one contiguous block (e.g. two separate
+    scripts/simulate_traffic.py invocations, each with its own incident
+    window, landing in the same metrics store): a single min-to-max band
+    would falsely span untouched requests in between.
+    """
+    incident_mask = df["retrieval_pipeline_name"] == "learning_degraded_incident"
+    if not incident_mask.any():
+        return
+    incident_indices = df.loc[incident_mask, "request_index"].tolist()
+    runs = [[incident_indices[0], incident_indices[0]]]
+    for idx in incident_indices[1:]:
+        if idx == runs[-1][1] + 1:
+            runs[-1][1] = idx
+        else:
+            runs.append([idx, idx])
+    for i, (s, e) in enumerate(runs):
+        vrect_kwargs = {}
+        if i == 0:
+            # Plotly renders a literal placeholder ("new text") if
+            # annotation_text=None is passed explicitly — omit the kwarg
+            # entirely for the unlabeled runs instead.
+            vrect_kwargs = dict(annotation_text=label, annotation_position="top left")
+        fig.add_vrect(
+            x0=s - 0.5, x1=e + 0.5,
+            fillcolor=STATUS["critical"], opacity=0.12, line_width=0,
+            **vrect_kwargs,
+        )
+
+
 def style_fig(fig: go.Figure, theme: str, show_legend: bool = False) -> go.Figure:
     ink = INK[theme]
     fig.update_layout(
@@ -201,32 +233,7 @@ st.subheader("Faithfulness (sampled)")
 faith_df = df.dropna(subset=["faithfulness_score"])
 if len(faith_df):
     fig = go.Figure()
-    incident_mask = df["retrieval_pipeline_name"] == "learning_degraded_incident"
-    if incident_mask.any():
-        # Shade each contiguous run of incident-tagged requests separately —
-        # incident rows aren't necessarily one contiguous block (e.g. two
-        # separate scripts/simulate_traffic.py invocations, each with its
-        # own incident window, landing in the same metrics store): a single
-        # min-to-max band would falsely span untouched requests in between.
-        incident_indices = df.loc[incident_mask, "request_index"].tolist()
-        runs = [[incident_indices[0], incident_indices[0]]]
-        for idx in incident_indices[1:]:
-            if idx == runs[-1][1] + 1:
-                runs[-1][1] = idx
-            else:
-                runs.append([idx, idx])
-        for i, (s, e) in enumerate(runs):
-            vrect_kwargs = {}
-            if i == 0:
-                # Plotly renders a literal placeholder ("new text") if
-                # annotation_text=None is passed explicitly — omit the kwarg
-                # entirely for the unlabeled runs instead.
-                vrect_kwargs = dict(annotation_text="incident: degraded retrieval config", annotation_position="top left")
-            fig.add_vrect(
-                x0=s - 0.5, x1=e + 0.5,
-                fillcolor=STATUS["critical"], opacity=0.12, line_width=0,
-                **vrect_kwargs,
-            )
+    add_incident_bands(fig, df)
     fig.add_hline(y=0.75, line_dash="dash", line_color=ink["muted"], annotation_text="threshold 0.75", annotation_position="bottom left")
     fig.add_trace(go.Scatter(
         x=faith_df["request_index"], y=faith_df["faithfulness_score"], mode="lines+markers",
@@ -237,6 +244,25 @@ if len(faith_df):
     st.plotly_chart(style_fig(fig, theme), use_container_width=True)
 else:
     st.caption("No sampled faithfulness scores yet — run scripts/simulate_traffic.py or the eval harness without --skip-ragas.")
+
+st.subheader("Citations per answer")
+st.caption(
+    "Faithfulness only checks whether an answer is grounded in *whatever* "
+    "context it received — a genuinely narrow-but-grounded answer from a "
+    "starved context still scores well. Citation count is what actually "
+    "moves when retrieval is starved: fewer/lower-quality candidates means "
+    "fewer distinct sources make it into the answer, even when the answer "
+    "stays faithful to what little it got."
+)
+fig = go.Figure()
+add_incident_bands(fig, df)
+fig.add_trace(go.Scatter(
+    x=df["request_index"], y=df["citations_count"], mode="lines+markers",
+    line=dict(color=seq_blue, width=2), marker=dict(size=6),
+    hovertemplate="Request %{x}<br>%{y} citations<extra></extra>",
+))
+fig.update_layout(yaxis_title="citations", xaxis_title="Request #")
+st.plotly_chart(style_fig(fig, theme), use_container_width=True)
 
 st.subheader("Refusal rate & retrieval hit rate (rolling window)")
 window = max(3, len(df) // 10)

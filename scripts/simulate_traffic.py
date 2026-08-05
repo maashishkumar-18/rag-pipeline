@@ -77,16 +77,27 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger("simulate_traffic")
 
 # ============================================================================
-# Degraded pipeline config for the injected incident — BM25 disabled
-# (semantic-only hybrid search), rerank_k slashed to 1 (context starved to a
-# single chunk), retry-on-low-confidence off (so the orchestrator's own
-# retry logic can't quietly compensate and mask the degradation).
+# Degraded pipeline config for the injected incident.
+#
+# First version of this only cut rerank_k to 1 while leaving candidate_k at
+# LEARNING_PIPELINE's default (20) — the reranker still picked the single
+# best chunk out of 20 good semantic candidates, so faithfulness (which only
+# checks whether the answer is grounded in *whatever context it was given*,
+# not whether that context was complete) barely moved: a real run showed
+# 3/3 in-window faithfulness samples still scoring 1.0. Honest finding, but
+# not a useful incident demo — the fix is to also starve the candidate pool
+# itself (candidate_k slashed to 3), not just the final selection, so the
+# reranker has too little to work with and a genuinely weak/irrelevant chunk
+# is more likely to be the one that survives. Combined with BM25 disabled
+# (semantic-only hybrid search) and retry-on-low-confidence off (so the
+# orchestrator's own retry logic can't quietly compensate and mask it).
 # ============================================================================
 
 DEGRADED_PIPELINE = dataclasses.replace(
     LEARNING_PIPELINE,
     name="learning_degraded_incident",
     hybrid_weights=HybridWeights(semantic=1.0, keyword=0.0, metadata=0.0),
+    candidate_k=3,
     rerank_k=1,
     enable_query_expansion=False,
     retry_on_low_confidence=False,

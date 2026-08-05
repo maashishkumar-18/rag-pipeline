@@ -274,20 +274,41 @@ surfaced all of them:
   identified by request sequence and `retrieval_pipeline_name`, not calendar
   date.
 
-### Honest result from the current sample run
+### Honest result from the current sample run — and a genuine finding it produced
 
-`scripts/simulate_traffic.py` was run twice against the sample corpus (58
-requests total, 14 tagged with the degraded config). The degradation
-mechanism itself is verified working — incident-tagged requests are
-correctly routed through `DEGRADED_PIPELINE` and tagged as such in both
-Langfuse and `metrics.db` — but at this sample size and faithfulness-sample
-rate, the 3 faithfulness samples that happened to fall inside the incident
-window all still scored 1.0; the one low score observed (0.67) fell
-*outside* the incident window. That's a real small-sample-size result, not
-a hidden success — a larger `--num-requests` and/or a denser
-`--faithfulness-sample-rate` would be needed for a demo run that reliably
-shows the drop. The refusal-rate and latency trends (visible in the
-dashboard regardless of sample size) are unaffected by this.
+`scripts/simulate_traffic.py` has now been run three times against the
+sample corpus (138 requests total, 46 tagged with the degraded config).
+First pass (`rerank_k=1`, `candidate_k` left at 20) showed no faithfulness
+drop at all — small sample size (3 in-window faithfulness scores), all 1.0.
+Second pass, after also cutting `candidate_k` to 3 so the reranker has too
+few candidates to reliably pick a good one (see `DEGRADED_PIPELINE`'s
+comment in `scripts/simulate_traffic.py`) and sampling faithfulness at 2x
+the density: **still no faithfulness drop** — 14/14 in-window samples scored
+1.0, actually *higher* than the 0.95 mean outside the incident window (where
+the two lowest scores in the whole dataset, 0.67 and 0.56, both occurred).
+
+That's not a failed demo — it's the more interesting result. Faithfulness
+(RAGAS) only checks whether an answer is grounded in *whatever context it
+received*; a well-behaved pipeline that's instructed to answer strictly from
+context (this one is, per its prompt) still produces a faithful answer from
+one starved chunk, just a narrower one. What the incident actually moves,
+comparing incident-tagged requests to normal ones in the same run:
+
+| Metric | Normal | Incident | 
+|---|---|---|
+| Citations per answer | 2.17 | 1.46 (-33%) |
+| Grounded rate | 98.9% | 95.7% |
+| Confidence score | 0.709 | 0.684 |
+| Retrieval latency | 2714ms | 1180ms (**faster**) |
+
+Retrieval got *faster* during the incident (semantic-only search, nothing to
+rerank down from) while quietly citing a third fewer sources per answer —
+exactly the kind of regression a latency-only dashboard, or a faithfulness-
+only quality gate, would both miss entirely. `dashboard/app.py`'s
+"Citations per answer" chart (added after this finding) is the one that
+actually shows the incident; the "Faithfulness" chart, honestly, doesn't.
+That gap is itself worth knowing about before wiring faithfulness alone into
+a CI gate in Phase 3.
 
 ## Roadmap
 
